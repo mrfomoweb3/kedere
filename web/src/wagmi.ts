@@ -1,6 +1,6 @@
 import { defineChain } from "viem";
-import { createConfig, http } from "wagmi";
-import { injected } from "wagmi/connectors";
+import { http } from "wagmi";
+import { createConfig } from "@privy-io/wagmi";
 import {
   MONAD_CHAIN_ID,
   MONAD_RPC_URL,
@@ -22,9 +22,10 @@ export const monadTestnet = defineChain({
   testnet: true,
 });
 
+// Privy-aware wagmi config: Privy injects its own connector (embedded +
+// external wallets) — we only declare chains + transports here.
 export const wagmiConfig = createConfig({
   chains: [monadTestnet],
-  connectors: [injected()],
   transports: {
     [monadTestnet.id]: http(MONAD_RPC_URL),
   },

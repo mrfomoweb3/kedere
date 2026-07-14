@@ -18,5 +18,11 @@ export const DEPLOY_BLOCK = BigInt(import.meta.env.VITE_DEPLOY_BLOCK ?? "0");
 
 export const ESTATE_FUND_ABI = abi;
 
+// Privy app id (public client id — safe in frontend). Create one at
+// https://dashboard.privy.io and set VITE_PRIVY_APP_ID.
+export const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID as
+  | string
+  | undefined;
+
 export const explorerTx = (hash: string) => `${MONAD_EXPLORER}/tx/${hash}`;
 export const explorerAddr = (addr: string) => `${MONAD_EXPLORER}/address/${addr}`;

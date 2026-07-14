@@ -1,32 +1,31 @@
-import {
-  useAccount,
-  useConnect,
-  useDisconnect,
-  useSwitchChain,
-} from "wagmi";
-import { injected } from "wagmi/connectors";
+import { usePrivy } from "@privy-io/react-auth";
+import { useAccount, useSwitchChain } from "wagmi";
 import { MONAD_CHAIN_ID } from "../contract/config";
 import { truncAddr } from "../lib/format";
 
 export function WalletButton() {
-  const { address, isConnected, chainId } = useAccount();
-  const { connect, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
+  const { ready, authenticated, login, logout, user } = usePrivy();
+  const { address, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
 
-  if (!isConnected) {
+  if (!ready) {
     return (
-      <button
-        className="btn btn-primary"
-        disabled={isPending}
-        onClick={() => connect({ connector: injected() })}
-      >
-        {isPending ? "Connecting…" : "Connect wallet"}
+      <button className="btn btn-ghost" disabled>
+        Loading…
       </button>
     );
   }
 
-  if (chainId !== MONAD_CHAIN_ID) {
+  if (!authenticated) {
+    return (
+      <button className="btn btn-primary" onClick={login}>
+        Sign in
+      </button>
+    );
+  }
+
+  // Signed in but wallet not on Monad — offer to switch.
+  if (chainId !== undefined && chainId !== MONAD_CHAIN_ID) {
     return (
       <button
         className="btn btn-rust"
@@ -37,14 +36,18 @@ export function WalletButton() {
     );
   }
 
+  const label =
+    address ??
+    user?.email?.address ??
+    user?.google?.email ??
+    "Signed in";
+
   return (
-    <button
-      className="btn btn-ghost"
-      title="Disconnect"
-      onClick={() => disconnect()}
-    >
+    <button className="btn btn-ghost" title="Sign out" onClick={logout}>
       <span className="wallet-dot" />
-      <span className="num">{truncAddr(address!)}</span>
+      <span className="num">
+        {label.startsWith("0x") ? truncAddr(label) : label}
+      </span>
     </button>
   );
 }

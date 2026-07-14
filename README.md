@@ -55,8 +55,11 @@ nothing leaves silently.
   guard). Multiple estates live in one deployment.
 - **Events are the ledger.** `LevyPaid`, `ExpenseProposed`, `ExpenseObjected`, `ExpenseExecuted`,
   `ExpenseCancelled`, `ResidentJoined` carry everything the UI renders — no indexer, no backend.
-- **Event-driven frontend** (Vite + React + TS, wagmi v2 + viem). All state is read from
+- **Event-driven frontend** (Vite + React + TS, wagmi + viem). All state is read from
   contract storage + `getLogs` from the deploy block, polled live. Zero fixtures, zero mock data.
+- **Sign-in via [Privy](https://privy.io)** — residents log in with email, a social account, or
+  an external wallet; email/social users get an embedded wallet auto-provisioned on Monad, so
+  non-crypto-native residents can pay a levy without ever installing a wallet extension.
 - **No backend, no database, no admin panel.** The frontend needs no secrets — public RPC and an
   injected wallet only.
 - **Design:** "the estate notice board" — paper-cream, naira-green, every ledger entry is a
@@ -112,8 +115,8 @@ forge test -vvv        # 29 passing
 
 ```bash
 cd web
-npm install
-cp .env.example .env.local     # then set VITE_CONTRACT_ADDRESS + VITE_DEPLOY_BLOCK
+npm install --legacy-peer-deps   # Privy pins an exact viem; legacy-peer-deps keeps the tree clean
+cp .env.example .env.local        # set VITE_PRIVY_APP_ID, VITE_CONTRACT_ADDRESS, VITE_DEPLOY_BLOCK
 npm run dev
 ```
 

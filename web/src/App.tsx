@@ -2,21 +2,17 @@ import { Landing } from "./routes/Landing";
 import { Estate } from "./routes/Estate";
 import { usePath } from "./router";
 import { ESTATE_FUND_ADDRESS } from "./contract/config";
+import { MissingConfig } from "./components/MissingConfig";
 
 export default function App() {
   const path = usePath();
 
   if (ESTATE_FUND_ADDRESS === "0x0000000000000000000000000000000000000000") {
     return (
-      <div className="center-note">
-        <div className="card center-note-card">
-          <p>
-            No contract address configured. Set{" "}
-            <code>VITE_CONTRACT_ADDRESS</code> after deploying EstateFund (see
-            README).
-          </p>
-        </div>
-      </div>
+      <MissingConfig
+        what="VITE_CONTRACT_ADDRESS"
+        detail="Deploy EstateFund to Monad testnet (see README → Deploy), then set VITE_CONTRACT_ADDRESS in web/.env.local. The app reads all data from chain — it never shows placeholder numbers."
+      />
     );
   }
 
