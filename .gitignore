@@ -12,9 +12,7 @@ web/node_modules/
 # foundry
 contracts/out/
 contracts/cache/
-contracts/broadcast/**/dry-run/
-contracts/broadcast/**/*.json
-!contracts/broadcast/**/run-latest.json
+contracts/broadcast/
 
 # misc
 *.log
