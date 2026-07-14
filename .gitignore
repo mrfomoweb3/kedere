@@ -1,0 +1,20 @@
+# secrets
+.env
+.env.local
+*.pem
+
+# node
+node_modules/
+web/dist/
+web/node_modules/
+.DS_Store
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/**/dry-run/
+contracts/broadcast/**/*.json
+!contracts/broadcast/**/run-latest.json
+
+# misc
+*.log
