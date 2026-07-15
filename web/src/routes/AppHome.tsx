@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { keccak256, toBytes } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
-import { usePrivy } from "@privy-io/react-auth";
 import { useWrite } from "../lib/useWrite";
 import { WalletButton } from "../components/WalletButton";
 import { useNavigate } from "../router";
 import { ESTATE_FUND_ABI, ESTATE_FUND_ADDRESS } from "../contract/config";
 
 export function AppHome() {
-  const { ready, authenticated } = usePrivy();
   const { isConnected } = useAccount();
   const { send, busy } = useWrite();
   const navigate = useNavigate();
@@ -64,15 +62,11 @@ export function AppHome() {
       </header>
 
       <div className="container apphome-inner">
-        {!ready ? (
-          <div className="card center-note-card">
-            <p className="muted">Loading…</p>
-          </div>
-        ) : !authenticated ? (
+        {!isConnected ? (
           <div className="card gate-card">
-            <h2 className="action-title">Sign in to continue</h2>
+            <h2 className="action-title">Connect to continue</h2>
             <p className="muted">
-              Create an account or connect a wallet to start or join an estate.
+              Connect your wallet to start or join an estate.
             </p>
             <WalletButton />
             <button className="btn btn-ghost" onClick={() => navigate("/")}>

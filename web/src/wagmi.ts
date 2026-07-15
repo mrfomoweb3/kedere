@@ -1,11 +1,12 @@
 import { defineChain } from "viem";
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { http } from "wagmi";
-import { createConfig } from "@privy-io/wagmi";
 import {
   MONAD_CHAIN_ID,
   MONAD_RPC_URL,
   MONAD_EXPLORER,
   MONAD_CURRENCY,
+  WC_PROJECT_ID,
 } from "./contract/config";
 
 export const monadTestnet = defineChain({
@@ -22,13 +23,14 @@ export const monadTestnet = defineChain({
   testnet: true,
 });
 
-// Privy-aware wagmi config: Privy injects its own connector (embedded +
-// external wallets) — we only declare chains + transports here.
-export const wagmiConfig = createConfig({
+export const wagmiConfig = getDefaultConfig({
+  appName: "Kedere",
+  projectId: WC_PROJECT_ID,
   chains: [monadTestnet],
   transports: {
     [monadTestnet.id]: http(MONAD_RPC_URL),
   },
+  ssr: false,
 });
 
 declare module "wagmi" {

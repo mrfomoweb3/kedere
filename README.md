@@ -62,9 +62,9 @@ nothing leaves silently.
   ≤100-block chunks (Monad's public RPC caps `eth_getLogs` at a 100-block range) across two
   bounded windows: the estate's genesis (early history) and the current tip (live activity).
   Polled every 6s. Zero fixtures, zero mock data.
-- **Sign-in via [Privy](https://privy.io)** — residents log in with email, a social account, or
-  an external wallet; email/social users get an embedded wallet auto-provisioned on Monad, so
-  non-crypto-native residents can pay a levy without ever installing a wallet extension.
+- **Wallet connect via [RainbowKit](https://rainbowkit.com)** (wagmi v2) — residents connect
+  MetaMask or any injected/WalletConnect wallet, with built-in wrong-network detection that
+  switches them to Monad Testnet.
 - **No backend, no database, no admin panel.** The frontend needs no secrets — public RPC and an
   injected wallet only.
 - **Design:** "the estate notice board" — paper-cream, naira-green, every ledger entry is a
@@ -125,8 +125,8 @@ forge test -vvv        # 29 passing
 
 ```bash
 cd web
-npm install --legacy-peer-deps   # Privy pins an exact viem; legacy-peer-deps keeps the tree clean
-cp .env.example .env.local        # set VITE_PRIVY_APP_ID, VITE_CONTRACT_ADDRESS, VITE_DEPLOY_BLOCK
+npm install
+cp .env.example .env.local        # set VITE_CONTRACT_ADDRESS, VITE_DEPLOY_BLOCK (WC id optional)
 npm run dev
 ```
 
