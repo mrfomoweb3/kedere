@@ -26,16 +26,17 @@ export function Landing() {
     return () => clearInterval(t);
   }, []);
 
-  // after the wallet connects (via Get started), move into the app
+  // connecting the wallet takes you into onboarding (which forwards returning
+  // wallets straight to their dashboard)
   useEffect(() => {
     if (isConnected && wantApp.current) {
       wantApp.current = false;
-      navigate("/app");
+      navigate("/welcome");
     }
   }, [isConnected, navigate]);
 
   function getStarted() {
-    if (isConnected) navigate("/app");
+    if (isConnected) navigate("/welcome");
     else {
       wantApp.current = true;
       openConnectModal?.();

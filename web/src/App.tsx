@@ -1,5 +1,5 @@
 import { Landing } from "./routes/Landing";
-import { AppHome } from "./routes/AppHome";
+import { Welcome } from "./routes/Welcome";
 import { Estate } from "./routes/Estate";
 import { usePath } from "./router";
 import { ESTATE_FUND_ADDRESS } from "./contract/config";
@@ -19,6 +19,6 @@ export default function App() {
 
   const match = path.match(/^\/estate\/(\d+)\/?$/);
   if (match) return <Estate id={BigInt(match[1])} />;
-  if (/^\/app\/?$/.test(path)) return <AppHome />;
+  if (/^\/(welcome|app)\/?$/.test(path)) return <Welcome />;
   return <Landing />;
 }

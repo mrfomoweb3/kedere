@@ -7,6 +7,7 @@ import { WalletButton } from "../components/WalletButton";
 import { NoticeCard } from "../components/NoticeCard";
 import { useNavigate } from "../router";
 import { fmtMon, truncAddr } from "../lib/format";
+import { getProfile } from "../lib/profile";
 import {
   ESTATE_FUND_ABI,
   ESTATE_FUND_ADDRESS,
@@ -161,6 +162,18 @@ export function Estate({ id }: { id: bigint }) {
             >
               {truncAddr(ESTATE_FUND_ADDRESS)} · verified onchain ↗
             </a>
+            {isConnected && onChain && (isChairman || isResident) && (
+              <span className="you-chip">
+                <span className="wallet-dot" />
+                {isChairman
+                  ? "You: Chairman"
+                  : `You: ${getProfile(address)?.name ?? "Resident"}${
+                      getProfile(address)?.unit
+                        ? ` · ${getProfile(address)?.unit}`
+                        : ""
+                    }`}
+              </span>
+            )}
           </div>
           <div className="estate-stats">
             <div className="stat">

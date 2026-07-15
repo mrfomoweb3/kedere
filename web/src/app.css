@@ -246,6 +246,138 @@
   justify-items: center;
 }
 
+/* ─────────────── onboarding / welcome ─────────────── */
+.welcome-inner {
+  padding: 44px 24px 80px;
+}
+.spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  border-top-color: var(--green);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.choose-head {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.role-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.role-card {
+  text-align: left;
+  background: var(--card);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+.role-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--green);
+}
+.role-card h3 {
+  font-size: 23px;
+  margin-top: 6px;
+}
+.role-card p {
+  font-size: 14.5px;
+  line-height: 1.5;
+  margin: 0;
+  flex: 1;
+}
+.role-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+}
+.role-badge-green {
+  background: #e7f0e6;
+  color: var(--green);
+}
+.role-badge-lime {
+  background: var(--lime-soft);
+  color: var(--green-ink);
+}
+.role-go {
+  font-weight: 700;
+  color: var(--green);
+  margin-top: 8px;
+}
+
+.setup {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.setup-back {
+  background: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 6px 0;
+  margin-bottom: 16px;
+}
+.setup-back:hover {
+  color: var(--ink);
+}
+.setup-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.setup-single {
+  max-width: 560px;
+}
+.setup-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.resume-card {
+  padding: 24px;
+  background: var(--paper-2);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+/* ─────────────── your-role chip (dashboard) ─────────────── */
+.you-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e7f0e6;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+}
+.you-chip .wallet-dot {
+  background: var(--green);
+}
+
 /* ─────────────── how it works ─────────────── */
 .how {
   display: grid;
