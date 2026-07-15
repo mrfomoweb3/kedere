@@ -42,9 +42,6 @@ export function Landing() {
           Kedere puts your estate's fund onchain, every levy publicly tracked
           and no spending without a proposal residents can veto.
         </p>
-        <p className="hero-claim">
-          The levy fight ends here. <strong>No trust required — just look.</strong>
-        </p>
         <div className="hero-cta">
           <button className="btn btn-primary btn-lg" onClick={getStarted} disabled={!ready}>
             {authenticated ? "Open app →" : "Get started →"}
