@@ -32,7 +32,6 @@ export function Landing() {
       </header>
 
       <section className="hero-solo container">
-        <span className="eyebrow">Onchain estate levy fund · Monad</span>
         <h1 className="hero-title">
           Owó estate yín,
           <br />
