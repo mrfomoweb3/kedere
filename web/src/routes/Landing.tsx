@@ -59,7 +59,6 @@ export function Landing() {
       <section className="hero-solo container">
         <h1 className="hero-title">
           <ScrambleText text={p.a} />
-          <br />
           <ScrambleText className="hero-accent" text={p.b} />
         </h1>
         <p className="hero-tagline">Your estate's money, in plain sight.</p>

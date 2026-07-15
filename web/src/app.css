@@ -138,6 +138,29 @@
   width: 100%;
 }
 
+/* ─────────────── hero decode reveal ─────────────── */
+.scramble-word {
+  display: inline-block; /* keeps each word intact; wraps between words */
+  white-space: pre;
+}
+.scramble-char {
+  display: inline-block;
+  animation: charReveal 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  will-change: opacity, filter, transform;
+}
+@keyframes charReveal {
+  from {
+    opacity: 0;
+    filter: blur(7px);
+    transform: translateY(0.16em);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
 /* ─────────────── landing (marketing) ─────────────── */
 .btn-lg {
   font-size: 16px;
@@ -153,6 +176,10 @@
 }
 .hero-solo .hero-title {
   font-size: clamp(46px, 7vw, 82px);
+  min-height: 2.05em; /* reserve 2 lines so language swaps don't shift content below */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .hero-solo .hero-hook {
   margin-left: auto;

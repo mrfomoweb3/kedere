@@ -1,65 +1,40 @@
-import { useEffect, useRef, useState } from "react";
-
-const GLYPHS = "abcdefghijklmnopqrstuvwxyzóíàèẹọɗ0123456789#%&";
-const prefersReduced =
-  typeof window !== "undefined" &&
-  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
 /**
- * Smoothly "decodes" from the previous text to a new target: unrevealed
- * characters flicker through random glyphs, then settle left-to-right.
- * Spaces and punctuation are preserved so the word shape stays legible.
+ * Reveals text one character at a time, left to right — each glyph fades and
+ * de-blurs into place. The final text is laid out immediately (only opacity /
+ * blur / transform animate, none of which affect layout), so there is zero
+ * reflow while it plays. Re-keying on `text` replays the reveal on each change.
  */
 export function ScrambleText({
   text,
   className,
-  duration = 900,
+  stagger = 0.03,
 }: {
   text: string;
   className?: string;
-  duration?: number;
+  stagger?: number;
 }) {
-  const [display, setDisplay] = useState(text);
-  const rafRef = useRef<number | null>(null);
-  const startRef = useRef(0);
-
-  useEffect(() => {
-    if (prefersReduced) {
-      setDisplay(text);
-      return;
-    }
-    const target = text;
-    const len = target.length;
-    startRef.current = performance.now();
-
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - startRef.current) / duration);
-      const revealed = Math.floor(p * len);
-      let out = "";
-      for (let i = 0; i < len; i++) {
-        const ch = target[i];
-        if (i < revealed || ch === " " || ch === "," || ch === ".") {
-          out += ch;
-        } else {
-          out += GLYPHS[(Math.random() * GLYPHS.length) | 0];
-        }
-      }
-      setDisplay(out);
-      if (p < 1) {
-        rafRef.current = requestAnimationFrame(tick);
-      } else {
-        setDisplay(target);
-      }
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [text, duration]);
+  const words = text.split(" ");
+  let idx = 0;
 
   return (
-    <span className={className} aria-label={text}>
-      {display}
+    <span className={className} aria-label={text} key={text}>
+      {words.map((word, wi) => (
+        <span className="scramble-word" key={wi}>
+          {Array.from(word).map((ch, ci) => {
+            const delay = idx++ * stagger;
+            return (
+              <span
+                className="scramble-char"
+                style={{ animationDelay: `${delay}s` }}
+                key={ci}
+              >
+                {ch}
+              </span>
+            );
+          })}
+          {wi < words.length - 1 ? " " : ""}
+        </span>
+      ))}
     </span>
   );
 }
