@@ -40,12 +40,8 @@ export function Landing() {
         </h1>
         <p className="hero-tagline">Your estate's money, in plain sight.</p>
         <p className="hero-hook">
-          Every estate has the “where is our money?” fight. Levies for diesel,
-          security and water vanish into someone's personal account, receipts
-          are photos in a WhatsApp group, and every AGM turns into an argument.
-          Kedere puts the fund itself onchain — every contribution publicly
-          attributed, and the chairman can't move a single unit without a public
-          proposal that residents can block.
+          Kedere puts your estate's fund onchain, every levy publicly tracked
+          and no spending without a proposal residents can veto.
         </p>
         <p className="hero-claim">
           The levy fight ends here. <strong>No trust required — just look.</strong>
