@@ -30,8 +30,8 @@ ADDR="$(grep -oE 'EstateFund deployed at: 0x[0-9a-fA-F]{40}' /tmp/kedere-deploy.
 [ -n "$ADDR" ] || { echo "✗ Could not parse deployed address"; exit 1; }
 echo "✓ Deployed: $ADDR"
 
-# deploy block for the frontend event scan
-BLOCK="$(cast receipt "$(grep -oE 'Hash: 0x[0-9a-fA-F]{64}' /tmp/kedere-deploy.log | grep -oE '0x[0-9a-fA-F]{64}' | tail -1)" --rpc-url "$MONAD_RPC_URL" blockNumber 2>/dev/null || echo 0)"
+# deploy block for the frontend event scan (read from the broadcast receipt)
+BLOCK="$(node -e "try{const j=require('$ROOT/contracts/broadcast/Deploy.s.sol/10143/run-latest.json');console.log(parseInt(j.receipts[0].blockNumber,16))}catch(e){console.log(0)}")"
 echo "▶ Deploy block: ${BLOCK:-0}"
 
 # ── 2. verify (sourcify) ─────────────────────────────────────────────────────

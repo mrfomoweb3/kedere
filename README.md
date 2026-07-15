@@ -27,12 +27,13 @@ nothing leaves silently.
 
 | | |
 |---|---|
-| **Live app** | _deploy to Vercel/CF Pages and paste the URL here_ |
-| **Contract (Monad testnet, verified)** | _paste address + `https://testnet.monadexplorer.com/address/<addr>` here_ |
-| **Demo estate** | `/estate/1` · join code `sunrise-04` |
+| **Live app** | _deploy to Vercel and paste the URL here (see `DEPLOY_WEB.md`)_ |
+| **Contract (Monad testnet, verified ✓)** | [`0x2923aF91E57F12D3f4076334F19cDcE4697Ef144`](https://testnet.monadexplorer.com/address/0x2923aF91E57F12D3f4076334F19cDcE4697Ef144) |
+| **Demo estate** | `/estate/0` — "Peace Court Estate, Abuja" · join code `sunrise-04` |
 | **Demo video (≤ 3 min)** | _paste URL here_ |
 
-> These four fields are filled in the moment the deploy + seed run completes (see **Deploy**).
+> The contract is live, verified, and seeded with a real demo estate. Live app URL + video are
+> the last two fields (web hosting + recording are manual — see `DEPLOY_WEB.md`).
 
 ---
 
@@ -40,7 +41,7 @@ nothing leaves silently.
 
 1. Open the live app and click **Connect wallet** (it offers to add/switch to Monad Testnet).
 2. Get testnet MON from <https://faucet.monad.xyz>.
-3. Go to the demo estate `/estate/1`. Join with code `sunrise-04` and your unit label, or just
+3. Go to the demo estate `/estate/0`. Join with code `sunrise-04` and your unit label, or just
    read the public ledger without joining.
 4. **Pay levy** — enter an amount and period, confirm. Watch your contribution *pin* into the
    ledger as a notice card, attributed to your unit, linking to the tx on the Monad explorer.
@@ -55,8 +56,12 @@ nothing leaves silently.
   guard). Multiple estates live in one deployment.
 - **Events are the ledger.** `LevyPaid`, `ExpenseProposed`, `ExpenseObjected`, `ExpenseExecuted`,
   `ExpenseCancelled`, `ResidentJoined` carry everything the UI renders — no indexer, no backend.
-- **Event-driven frontend** (Vite + React + TS, wagmi + viem). All state is read from
-  contract storage + `getLogs` from the deploy block, polled live. Zero fixtures, zero mock data.
+- **Chain-native frontend** (Vite + React + TS, wagmi + viem). Authoritative state — fund
+  balance, resident count, and every expense's live status — is read from contract **storage**
+  (no range limit). The ledger's levy/join/objection cards come from event logs, scanned in
+  ≤100-block chunks (Monad's public RPC caps `eth_getLogs` at a 100-block range) across two
+  bounded windows: the estate's genesis (early history) and the current tip (live activity).
+  Polled every 6s. Zero fixtures, zero mock data.
 - **Sign-in via [Privy](https://privy.io)** — residents log in with email, a social account, or
   an external wallet; email/social users get an embedded wallet auto-provisioned on Monad, so
   non-crypto-native residents can pay a levy without ever installing a wallet extension.
@@ -79,7 +84,12 @@ nothing leaves silently.
   `proposeExpense` / `executeExpense` / `cancelExpense`.
 - **Reentrancy.** `executeExpense` is `nonReentrant` with effects-before-interaction; a malicious
   recipient cannot drain the fund (covered by a test).
-- **Honest limitation:** the chairman is a single signer. A production estate would put the
+- **Honest limitation (reads):** because Monad's public RPC limits `eth_getLogs` to 100 blocks
+  and there's no backend indexer, the levy feed is scanned over the estate's genesis + tip
+  windows rather than the entire chain. Fund balance and all expense statuses are always exact
+  (read from storage); a very long-lived estate's mid-history *levy* cards beyond those windows
+  would need an indexer — the natural production add-on.
+- **Honest limitation (custody):** the chairman is a single signer. A production estate would put the
   chairman role behind a multisig (e.g. a Gnosis Safe) — the contract's access model drops in
   behind one unchanged. Called out plainly because it's the real next step.
 

@@ -27,8 +27,9 @@ can't be edited and nothing leaves silently. No trust required — just look.
 
 **GitHub repo:** _[paste public repo URL]_
 
-**Contract address (deployed + verified):** _[paste 0x… address]_
-**Explorer:** _[https://testnet.monadexplorer.com/address/<addr>]_
+**Contract address (deployed + verified ✓):** `0x2923aF91E57F12D3f4076334F19cDcE4697Ef144`
+**Explorer:** https://testnet.monadexplorer.com/address/0x2923aF91E57F12D3f4076334F19cDcE4697Ef144
+**Demo estate:** `/estate/0` · join code `sunrise-04`
 
 **Demo video (≤ 3 min, public):** _[paste URL]_
 

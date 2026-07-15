@@ -21,11 +21,21 @@ function Pin() {
 }
 
 function TxLink({ hash, ts }: { hash: string; ts?: number }) {
+  const hasTx = !!hash && hash !== "0x" && hash.length > 3;
   return (
     <div className="notice-foot">
-      <a href={explorerTx(hash)} target="_blank" rel="noreferrer" className="tx">
-        {truncAddr(hash)} ↗
-      </a>
+      {hasTx ? (
+        <a
+          href={explorerTx(hash)}
+          target="_blank"
+          rel="noreferrer"
+          className="tx"
+        >
+          {truncAddr(hash)} ↗
+        </a>
+      ) : (
+        <span className="muted">on Monad testnet</span>
+      )}
       <span className="muted">{relTime(ts)}</span>
     </div>
   );
