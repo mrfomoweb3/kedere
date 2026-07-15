@@ -210,9 +210,12 @@ export function Estate({ id }: { id: bigint }) {
                 <h3 className="rail-title">You're viewing publicly</h3>
                 <p className="muted">
                   Anyone can read this ledger. To pay a levy, join the estate
-                  from the start page with its code.
+                  with its code.
                 </p>
-                <button className="btn btn-ghost block" onClick={() => navigate("/")}>
+                <button
+                  className="btn btn-ghost block"
+                  onClick={() => navigate("/app")}
+                >
                   Join this estate
                 </button>
               </div>
