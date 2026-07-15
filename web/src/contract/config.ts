@@ -21,8 +21,9 @@ export const ESTATE_FUND_ABI = abi;
 // WalletConnect Cloud project id (public — safe in frontend). Get one free at
 // https://cloud.reown.com. Injected wallets (MetaMask, etc.) work without it;
 // it's needed for WalletConnect / mobile-wallet QR connections.
+// Empty when unset — the app then uses an injected-only wallet config.
 export const WC_PROJECT_ID =
-  (import.meta.env.VITE_WC_PROJECT_ID as string | undefined) ?? "kedere_dev";
+  (import.meta.env.VITE_WC_PROJECT_ID as string | undefined)?.trim() || "";
 
 export const explorerTx = (hash: string) => `${MONAD_EXPLORER}/tx/${hash}`;
 export const explorerAddr = (addr: string) => `${MONAD_EXPLORER}/address/${addr}`;
