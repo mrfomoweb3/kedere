@@ -993,9 +993,9 @@
   color: var(--paper);
   background-image:
     linear-gradient(180deg, rgba(16, 51, 32, 0.12) 0%, rgba(13, 43, 26, 0.9) 82%),
-    url("/hero.jpg");
+    url("/estate-card.jpg");
   background-size: cover, cover;
-  background-position: center, center 32%;
+  background-position: center, center;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
