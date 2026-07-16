@@ -1,0 +1,88 @@
+// Kedere — read model. The chain is the source of truth; these tables are an
+// index of on-chain events (+ off-chain resident display names) for fast reads.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")   // pooled (pgbouncer) for the app
+  directUrl = env("DIRECT_URL")     // direct for migrations
+}
+
+model Estate {
+  id            Int      @id // on-chain estateId
+  name          String
+  chairman      String
+  balance       String // wei
+  residentCount Int
+  proposalDelay Int // seconds
+  createdBlock  Int
+  createdAt     DateTime @default(now())
+
+  residents Resident[]
+  expenses  Expense[]
+  events    LedgerEvent[]
+}
+
+model Resident {
+  id         String @id @default(cuid())
+  estateId   Int
+  address    String // lowercased
+  unitLabel  String
+  joinedBlock Int
+
+  estate Estate @relation(fields: [estateId], references: [id], onDelete: Cascade)
+
+  @@unique([estateId, address])
+  @@index([address])
+}
+
+model Expense {
+  id         String  @id @default(cuid())
+  estateId   Int
+  expenseId  Int
+  recipient  String
+  amount     String // wei
+  memo       String
+  proposedAt Int // unix seconds
+  objections Int
+  executed   Boolean
+  cancelled  Boolean
+  proposedTx String?
+
+  estate Estate @relation(fields: [estateId], references: [id], onDelete: Cascade)
+
+  @@unique([estateId, expenseId])
+}
+
+model LedgerEvent {
+  id          String @id @default(cuid())
+  estateId    Int
+  kind        String // levy | joined | objected | proposed | executed | cancelled
+  txHash      String
+  blockNumber Int
+  logIndex    Int
+  timestamp   Int
+  data        Json
+
+  estate Estate @relation(fields: [estateId], references: [id], onDelete: Cascade)
+
+  @@unique([txHash, logIndex])
+  @@index([estateId])
+}
+
+// Off-chain resident display name (not stored on-chain), keyed by wallet.
+model Profile {
+  address   String   @id // lowercased
+  name      String
+  updatedAt DateTime @updatedAt
+}
+
+// Indexer bookmark: how far we've scanned per contract.
+model IndexState {
+  contract  String   @id // lowercased contract address
+  lastBlock Int
+  updatedAt DateTime @updatedAt
+}

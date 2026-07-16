@@ -1,28 +1,10 @@
-import { defineChain } from "viem";
 import { createConfig, http } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import {
-  MONAD_CHAIN_ID,
-  MONAD_RPC_URL,
-  MONAD_EXPLORER,
-  MONAD_CURRENCY,
-  WC_PROJECT_ID,
-} from "./contract/config";
+import { monadTestnet } from "./contract/chain";
+import { MONAD_RPC_URL, WC_PROJECT_ID } from "./contract/config";
 
-export const monadTestnet = defineChain({
-  id: MONAD_CHAIN_ID,
-  name: "Monad Testnet",
-  nativeCurrency: MONAD_CURRENCY,
-  rpcUrls: {
-    default: { http: [MONAD_RPC_URL] },
-    public: { http: [MONAD_RPC_URL] },
-  },
-  blockExplorers: {
-    default: { name: "Monad Explorer", url: MONAD_EXPLORER },
-  },
-  testnet: true,
-});
+export { monadTestnet };
 
 const transports = { [monadTestnet.id]: http(MONAD_RPC_URL) };
 
@@ -36,13 +18,13 @@ export const wagmiConfig = WC_PROJECT_ID
       projectId: WC_PROJECT_ID,
       chains: [monadTestnet],
       transports,
-      ssr: false,
+      ssr: true,
     })
   : createConfig({
       chains: [monadTestnet],
       connectors: [injected()],
       transports,
-      ssr: false,
+      ssr: true,
     });
 
 declare module "wagmi" {

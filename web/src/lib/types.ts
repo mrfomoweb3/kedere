@@ -20,6 +20,7 @@ interface Base {
 export interface LevyEntry extends Base {
   kind: "levy";
   resident: Hex;
+  name?: string;
   amount: bigint;
   period: string;
   unitLabel: string;
@@ -53,6 +54,7 @@ export interface CancelledEntry extends Base {
 export interface JoinedEntry extends Base {
   kind: "joined";
   resident: Hex;
+  name?: string;
   unitLabel: string;
 }
 
@@ -75,4 +77,10 @@ export interface ExpenseView {
   objections: number;
   status: ExpenseStatus;
   cancelReason?: string;
+}
+
+export interface EstateData {
+  meta: EstateMeta;
+  feed: LedgerEntry[];
+  expenses: Map<string, ExpenseView>;
 }

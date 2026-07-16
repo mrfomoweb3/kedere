@@ -1,3 +1,5 @@
+"use client";
+
 import { Landing } from "./routes/Landing";
 import { Welcome } from "./routes/Welcome";
 import { Estate } from "./routes/Estate";

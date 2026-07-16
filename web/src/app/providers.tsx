@@ -1,19 +1,16 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+"use client";
+
+import { useState } from "react";
 import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
-import "@rainbow-me/rainbowkit/styles.css";
-import { wagmiConfig, monadTestnet } from "./wagmi";
-import { ToastProvider } from "./components/Toasts";
-import App from "./App";
-import "./index.css";
-import "./app.css";
+import { wagmiConfig, monadTestnet } from "../wagmi";
+import { ToastProvider } from "../components/Toasts";
 
-const queryClient = new QueryClient();
+export function Providers({ children }: { children: React.ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient());
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
+  return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
@@ -25,11 +22,9 @@ createRoot(document.getElementById("root")!).render(
             fontStack: "system",
           })}
         >
-          <ToastProvider>
-            <App />
-          </ToastProvider>
+          <ToastProvider>{children}</ToastProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
-  </StrictMode>,
-);
+  );
+}
