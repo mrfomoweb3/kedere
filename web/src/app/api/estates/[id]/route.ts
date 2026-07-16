@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sync } from "../../../../server/indexer";
+import { syncOnce, syncInBackground } from "../../../../server/indexer";
 import { getEstateData } from "../../../../server/estateData";
 
 export const dynamic = "force-dynamic";
@@ -13,13 +13,20 @@ export async function GET(
   if (!Number.isInteger(estateId) || estateId < 0) {
     return NextResponse.json({ error: "bad id" }, { status: 400 });
   }
-  // keep the index fresh (bounded catch-up); ignore transient RPC errors
+
+  let data = await getEstateData(estateId);
+  if (data) {
+    // known estate → serve instantly, refresh index in the background
+    syncInBackground();
+    return NextResponse.json(data);
+  }
+  // not indexed yet (e.g. just created) → sync once, then read
   try {
-    await sync();
+    await syncOnce();
   } catch (e) {
     console.error("sync error", e);
   }
-  const data = await getEstateData(estateId);
+  data = await getEstateData(estateId);
   if (!data) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(data);
 }

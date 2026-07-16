@@ -120,6 +120,20 @@ async function refreshEstate(id: number) {
   }
 }
 
+// Only one sync at a time — extra triggers piggyback on the in-flight run.
+let inFlight: Promise<{ from: number; to: number; latest: number }> | null = null;
+
+/** Run a sync, coalescing concurrent callers onto one in-flight run. */
+export function syncOnce() {
+  if (!inFlight) inFlight = sync().finally(() => (inFlight = null));
+  return inFlight;
+}
+
+/** Kick a sync without blocking the caller (best-effort refresh). */
+export function syncInBackground() {
+  void syncOnce().catch(() => {});
+}
+
 /**
  * Incrementally index new blocks into the DB. Idempotent — safe to call
  * repeatedly / concurrently (unique constraints dedupe). Returns how far it got.

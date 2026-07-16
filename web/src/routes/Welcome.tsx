@@ -29,8 +29,14 @@ export function Welcome() {
       setStep("checking");
 
       // 1. Ask the backend which estates this wallet belongs to (cross-device).
+      //    Time-boxed so a slow/cold backend never freezes onboarding.
       try {
-        const res = await fetch(`/api/wallets/${address}/estates`);
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch(`/api/wallets/${address}/estates`, {
+          signal: ctrl.signal,
+        });
+        clearTimeout(timer);
         if (res.ok) {
           const { estates } = await res.json();
           if (!cancelled && estates?.length) {
@@ -41,7 +47,7 @@ export function Welcome() {
           }
         }
       } catch {
-        /* backend unreachable — fall back to local memory below */
+        /* backend unreachable / timed out — fall back to local memory below */
       }
 
       // 2. Fallback: locally-remembered registration, re-verified on-chain.
