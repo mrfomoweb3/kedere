@@ -322,7 +322,7 @@
 }
 
 .cta-band {
-  padding: clamp(64px, 8vw, 112px) 24px;
+  padding-block: clamp(64px, 8vw, 112px);
 }
 .cta-band-card.card {
   display: flex;
@@ -920,7 +920,7 @@
   grid-template-columns: 1.05fr 0.95fr;
   gap: 48px;
   align-items: start;
-  padding: clamp(64px, 8vw, 112px) 24px;
+  padding-block: clamp(64px, 8vw, 112px);
 }
 .proof-title {
   font-family: var(--font-display);
@@ -1251,7 +1251,7 @@
 
 /* how it works — lapping (stacking) cards */
 .stack-section {
-  padding: clamp(64px, 8vw, 112px) 24px;
+  padding-block: clamp(64px, 8vw, 112px);
 }
 .stack {
   position: relative;
@@ -1323,7 +1323,7 @@
 
 /* features */
 .features {
-  padding: clamp(64px, 8vw, 112px) 24px;
+  padding-block: clamp(64px, 8vw, 112px);
 }
 .feature-grid {
   display: grid;
@@ -1360,7 +1360,7 @@
 
 /* why */
 .why {
-  padding: clamp(64px, 8vw, 112px) 24px;
+  padding-block: clamp(64px, 8vw, 112px);
   text-align: center;
   max-width: 900px;
 }
