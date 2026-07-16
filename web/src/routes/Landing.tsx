@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -49,6 +51,40 @@ export function Landing() {
       navigate("/welcome");
     }
   }, [isConnected, navigate]);
+
+  // "Lapping cards": each step card sticks near the top; as the next card
+  // scrolls up over it, the covered card scales down + dims so it appears to
+  // recede behind — a stacking/overlap effect. Respects reduced-motion.
+  const stackRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    gsap.registerPlugin(ScrollTrigger);
+    const STICK = 104;
+    const ctx = gsap.context(() => {
+      const cards = gsap.utils.toArray<HTMLElement>(".stack-card");
+      cards.forEach((card, i) => {
+        if (i === cards.length - 1) return;
+        gsap.to(card, {
+          scale: 0.9,
+          filter: "brightness(0.92)",
+          transformOrigin: "50% 0%",
+          ease: "none",
+          scrollTrigger: {
+            trigger: cards[i + 1],
+            start: "top bottom-=80",
+            end: `top top+=${STICK}`,
+            scrub: true,
+          },
+        });
+      });
+      ScrollTrigger.refresh();
+    }, stackRef);
+    return () => ctx.revert();
+  }, []);
 
   function getStarted() {
     if (isConnected) navigate("/welcome");
@@ -153,22 +189,26 @@ export function Landing() {
         <FindCard navigate={navigate} />
       </section>
 
-      {/* ── how it works (large rows) ── */}
-      <section className="steps container" id="how">
+      {/* ── how it works (lapping cards) ── */}
+      <section className="stack-section container" id="how">
         <div className="sec-head">
           <h2 className="sec-title">How Kedere works</h2>
           <p className="sec-lead">Three moves, all in the open.</p>
         </div>
-        {STEPS.map((s) => (
-          <div className="step-row" key={s.n}>
-            <span className="step-n">{s.n}</span>
-            <div className="step-body">
-              <h3>{s.t}</h3>
-              <p className="muted">{s.d}</p>
-            </div>
-            <div className="step-rule" />
-          </div>
-        ))}
+        <div className="stack" ref={stackRef}>
+          {STEPS.map((s) => (
+            <article className="stack-card" key={s.n}>
+              <span className="stack-n">{s.n}</span>
+              <div className="stack-content">
+                <h3>{s.t}</h3>
+                <p>{s.d}</p>
+              </div>
+              <span className="stack-mark" aria-hidden>
+                <BrandGlyph />
+              </span>
+            </article>
+          ))}
+        </div>
       </section>
 
       {/* ── features grid ── */}
