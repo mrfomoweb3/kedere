@@ -63,7 +63,6 @@ export function Landing() {
     <div className="landing">
       {/* ── hero ── */}
       <section className="hero-bleed">
-        <HeroSkyline />
         <header className="hero-nav">
           <div className="brand brand-light">
             <span className="brand-mark brand-mark-lime"><BrandGlyph /></span>
@@ -248,20 +247,3 @@ function DemoPeek({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-function HeroSkyline() {
-  return (
-    <svg className="hero-skyline" viewBox="0 0 1440 220" preserveAspectRatio="xMidYMax slice" aria-hidden>
-      <g fill="#0f3320" opacity="0.55">
-        {[0, 240, 480, 720, 960, 1200].map((x, i) => (
-          <g key={i} transform={`translate(${x},${40 + (i % 2) * 26})`}>
-            <rect x="30" y="70" width="180" height="110" rx="6" />
-            <path d="M20 72 L120 18 L220 72 Z" />
-            <rect x="70" y="100" width="30" height="30" rx="3" fill="#163f2a" />
-            <rect x="140" y="100" width="30" height="30" rx="3" fill="#163f2a" />
-            <rect x="105" y="140" width="30" height="40" rx="3" fill="#163f2a" />
-          </g>
-        ))}
-      </g>
-    </svg>
-  );
-}

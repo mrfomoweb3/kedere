@@ -189,29 +189,33 @@
   overflow: hidden;
   margin: 14px;
   border-radius: 30px;
-  min-height: min(88vh, 820px);
+  min-height: min(90vh, 860px);
   display: flex;
   flex-direction: column;
   color: var(--paper);
-  padding: 26px clamp(20px, 4vw, 56px) 40px;
-  background:
+  padding: 26px clamp(20px, 4vw, 56px) 44px;
+  /* estate photo + deep-green scrim (darker toward the CTAs for legibility),
+     with the brand gradient as a fallback if /hero.jpg is missing */
+  background-image:
+    radial-gradient(90% 70% at 50% 46%, rgba(13, 43, 26, 0.55) 0%, transparent 72%),
+    linear-gradient(
+      180deg,
+      rgba(16, 51, 32, 0.62) 0%,
+      rgba(16, 51, 32, 0.46) 42%,
+      rgba(13, 43, 26, 0.92) 100%
+    ),
+    url("/hero.jpg"),
     radial-gradient(120% 90% at 50% -10%, #24663f 0%, #17402a 55%, #10331f 100%);
+  background-size: cover, cover, cover, cover;
+  background-position: center, center, center 30%, center;
+  background-repeat: no-repeat;
 }
 .hero-bleed::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 5px 5px;
-  pointer-events: none;
-}
-.hero-skyline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 220px;
   pointer-events: none;
 }
 
@@ -268,6 +272,11 @@
   flex-direction: column;
   min-height: 1.84em;
   justify-content: center;
+  text-shadow: 0 2px 30px rgba(10, 30, 18, 0.45);
+}
+.hero-tagline-light,
+.hero-desc {
+  text-shadow: 0 1px 16px rgba(10, 30, 18, 0.4);
 }
 .hero-accent-lime {
   color: var(--lime);
