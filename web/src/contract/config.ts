@@ -27,5 +27,10 @@ export const ESTATE_FUND_ABI = abi;
 export const WC_PROJECT_ID =
   (process.env.NEXT_PUBLIC_WC_PROJECT_ID as string | undefined)?.trim() || "";
 
+// Public GitHub repo (docs live in its README/BACKEND.md). When unset, the
+// nav "Docs" link falls back to scrolling the on-page explainer.
+export const REPO_URL =
+  (process.env.NEXT_PUBLIC_REPO_URL as string | undefined)?.trim() || "";
+
 export const explorerTx = (hash: string) => `${MONAD_EXPLORER}/tx/${hash}`;
 export const explorerAddr = (addr: string) => `${MONAD_EXPLORER}/address/${addr}`;

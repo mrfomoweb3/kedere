@@ -7,6 +7,7 @@ import { WalletButton } from "../components/WalletButton";
 import { ScrambleText } from "../components/ScrambleText";
 import { BrandGlyph } from "../components/BrandGlyph";
 import { fmtMon, relTime } from "../lib/format";
+import { REPO_URL } from "../contract/config";
 
 const PHRASES = [
   { a: "Your estate's money,", b: "in plain sight." }, // English
@@ -69,9 +70,20 @@ export function Landing() {
             <span className="brand-name">KEDERE</span>
           </div>
           <div className="hero-nav-right">
-            <button className="hero-link" onClick={() => navigate("/estate/0")}>
-              Live demo
-            </button>
+            {REPO_URL ? (
+              <a className="hero-link" href={REPO_URL} target="_blank" rel="noreferrer">
+                Docs
+              </a>
+            ) : (
+              <button
+                className="hero-link"
+                onClick={() =>
+                  document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                Docs
+              </button>
+            )}
             <WalletButton />
           </div>
         </header>
@@ -119,7 +131,7 @@ export function Landing() {
       </section>
 
       {/* ── how it works (large rows) ── */}
-      <section className="steps container">
+      <section className="steps container" id="how">
         <div className="sec-head">
           <h2 className="sec-title">How Kedere works</h2>
           <p className="sec-lead">Three moves, all in the open.</p>
