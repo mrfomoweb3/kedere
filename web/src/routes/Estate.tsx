@@ -79,7 +79,7 @@ export function Estate({ id }: { id: bigint }) {
   const isResident = !!residentFlag || isChairman;
 
   if (isLoading) {
-    return <CenterNote text="Reading the ledger from Monad…" />;
+    return <CenterNote text="Loading the ledger…" />;
   }
   if (isError || !data || !meta) {
     return (
