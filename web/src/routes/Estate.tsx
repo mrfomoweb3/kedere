@@ -8,6 +8,7 @@ import { AreaChart } from "../components/AreaChart";
 import { Gauge } from "../components/Gauge";
 import { Modal } from "../components/Modal";
 import { HanKedereStamp } from "../components/Stamp";
+import { BrandGlyph } from "../components/BrandGlyph";
 import { useNavigate } from "../router";
 import { fmtMon, truncAddr, relTime, countdown } from "../lib/format";
 import { getProfile } from "../lib/profile";
@@ -176,7 +177,7 @@ export function Estate({ id }: { id: bigint }) {
     <div className="dash-shell">
       <aside className="sidebar">
         <button className="side-brand" onClick={() => navigate("/")} title="Kedere">
-          K
+          <BrandGlyph />
         </button>
         <nav className="side-nav">
           <SideIcon label="Overview" active onClick={() => scrollTo(".dash-body")}>

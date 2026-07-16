@@ -3,6 +3,7 @@ import { keccak256, toBytes } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import { useWrite } from "../lib/useWrite";
 import { WalletButton } from "../components/WalletButton";
+import { BrandGlyph } from "../components/BrandGlyph";
 import { useNavigate } from "../router";
 import { getProfile, saveProfile, clearProfile } from "../lib/profile";
 import { useAuth } from "../lib/useAuth";
@@ -93,7 +94,7 @@ export function Welcome() {
       <header className="topbar">
         <div className="container spread">
           <button className="brand brand-btn" onClick={() => navigate("/")}>
-            <span className="brand-mark">K</span>
+            <span className="brand-mark"><BrandGlyph /></span>
             <span className="brand-name">KEDERE</span>
           </button>
           <WalletButton />

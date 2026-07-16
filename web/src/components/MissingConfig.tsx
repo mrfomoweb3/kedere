@@ -1,3 +1,5 @@
+import { BrandGlyph } from "./BrandGlyph";
+
 export function MissingConfig({
   what,
   detail,
@@ -9,7 +11,9 @@ export function MissingConfig({
     <div className="center-note">
       <div className="card center-note-card">
         <div className="brand" style={{ justifyContent: "center" }}>
-          <span className="brand-mark">K</span>
+          <span className="brand-mark">
+            <BrandGlyph />
+          </span>
           <span className="brand-name">KEDERE</span>
         </div>
         <p>
