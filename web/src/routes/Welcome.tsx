@@ -5,6 +5,7 @@ import { useWrite } from "../lib/useWrite";
 import { WalletButton } from "../components/WalletButton";
 import { useNavigate } from "../router";
 import { getProfile, saveProfile, clearProfile } from "../lib/profile";
+import { useAuth } from "../lib/useAuth";
 import { ESTATE_FUND_ABI, ESTATE_FUND_ADDRESS } from "../contract/config";
 
 type Step = "checking" | "connect" | "choose" | "chairman" | "resident";
@@ -26,6 +27,24 @@ export function Welcome() {
         return;
       }
       setStep("checking");
+
+      // 1. Ask the backend which estates this wallet belongs to (cross-device).
+      try {
+        const res = await fetch(`/api/wallets/${address}/estates`);
+        if (res.ok) {
+          const { estates } = await res.json();
+          if (!cancelled && estates?.length) {
+            // most recently created estate the wallet belongs to
+            const target = estates[estates.length - 1];
+            navigate(`/estate/${target.id}`);
+            return;
+          }
+        }
+      } catch {
+        /* backend unreachable — fall back to local memory below */
+      }
+
+      // 2. Fallback: locally-remembered registration, re-verified on-chain.
       const p = getProfile(address);
       if (p && publicClient) {
         try {
@@ -281,6 +300,14 @@ function ResidentSetup({ address, send, busy, publicClient, navigate, back }: an
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [unit, setUnit] = useState("");
+  const { saveName } = useAuth();
+
+  function persist() {
+    saveProfile(address, { role: "resident", estateId: id, name, unit });
+    // best-effort: sync the name to the backend (cross-device). Non-blocking —
+    // if the wallet declines the sign-in, the local name still works.
+    saveName(name).catch(() => {});
+  }
 
   async function join(e: React.FormEvent) {
     e.preventDefault();
@@ -292,7 +319,7 @@ function ResidentSetup({ address, send, busy, publicClient, navigate, back }: an
       args: [BigInt(id), address],
     })) as boolean;
     if (already) {
-      saveProfile(address, { role: "resident", estateId: id, name, unit });
+      persist();
       navigate(`/estate/${id}`);
       return;
     }
@@ -302,7 +329,7 @@ function ResidentSetup({ address, send, busy, publicClient, navigate, back }: an
       pending: "Joining your estate…",
       success: "You've joined the estate.",
       onDone: () => {
-        saveProfile(address, { role: "resident", estateId: id, name, unit });
+        persist();
         navigate(`/estate/${id}`);
       },
     });

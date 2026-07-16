@@ -54,10 +54,13 @@ export function NoticeCard(p: Props) {
           <span className="notice-amount num">+{fmtMon(entry.amount)} MON</span>
         </div>
         <p className="notice-line">
-          <strong>{entry.unitLabel}</strong> paid the levy
+          <strong>{entry.name ?? entry.unitLabel}</strong> paid the levy
           <span className="muted"> · {entry.period}</span>
         </p>
-        <p className="notice-sub muted num">{truncAddr(entry.resident)}</p>
+        <p className="notice-sub muted">
+          {entry.name ? `${entry.unitLabel} · ` : ""}
+          <span className="num">{truncAddr(entry.resident)}</span>
+        </p>
         <TxLink hash={entry.txHash} ts={entry.timestamp} />
       </article>
     );
@@ -71,7 +74,10 @@ export function NoticeCard(p: Props) {
           <span className="chip chip-joined">Joined</span>
         </div>
         <p className="notice-line">
-          <strong>{entry.unitLabel}</strong> joined the estate
+          <strong>{entry.name ?? entry.unitLabel}</strong> joined the estate
+          {entry.name ? (
+            <span className="muted"> · {entry.unitLabel}</span>
+          ) : null}
         </p>
         <TxLink hash={entry.txHash} ts={entry.timestamp} />
       </article>
