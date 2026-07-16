@@ -50,23 +50,24 @@ nothing leaves silently.
 
 ---
 
-## Architecture (5 bullets)
+## Architecture
 
 - **One contract**, `EstateFund.sol` (Solidity 0.8.24, no external deps, hand-rolled reentrancy
-  guard). Multiple estates live in one deployment.
-- **Events are the ledger.** `LevyPaid`, `ExpenseProposed`, `ExpenseObjected`, `ExpenseExecuted`,
-  `ExpenseCancelled`, `ResidentJoined` carry everything the UI renders — no indexer, no backend.
-- **Chain-native frontend** (Vite + React + TS, wagmi + viem). Authoritative state — fund
-  balance, resident count, and every expense's live status — is read from contract **storage**
-  (no range limit). The ledger's levy/join/objection cards come from event logs, scanned in
-  ≤100-block chunks (Monad's public RPC caps `eth_getLogs` at a 100-block range) across two
-  bounded windows: the estate's genesis (early history) and the current tip (live activity).
-  Polled every 6s. Zero fixtures, zero mock data.
-- **Wallet connect via [RainbowKit](https://rainbowkit.com)** (wagmi v2) — residents connect
-  MetaMask or any injected/WalletConnect wallet, with built-in wrong-network detection that
-  switches them to Monad Testnet.
-- **No backend, no database, no admin panel.** The frontend needs no secrets — public RPC and an
-  injected wallet only.
+  guard). Multiple estates live in one deployment. **The contract holds the money and is the
+  source of truth** — all writes (create, join, pay levy, propose, object, execute) go straight
+  from the user's wallet to the contract.
+- **Next.js full-stack** (App Router). The React app is the notice-board UI; API routes are the
+  backend. See `BACKEND.md`.
+- **Indexer + Postgres (Supabase).** A server-side indexer reads the contract's events in
+  ≤100-block chunks (Monad's public RPC caps `eth_getLogs` at 100 blocks) plus authoritative
+  state from storage, into Postgres. So the API serves the **full ledger fast** — no client-side
+  chunk-scanning, and complete levy history regardless of chain length.
+- **API** — `GET /api/estates/[id]` (ledger), `GET /api/wallets/[addr]/estates` (a wallet's
+  estates → instant onboarding redirect), `GET/POST /api/profiles` (resident display names that
+  follow users cross-device), `/api/sync`, and **SIWE** auth (`/api/auth/*`) so a wallet can only
+  edit its own profile. No passwords.
+- **Wallet connect via [RainbowKit](https://rainbowkit.com)** (wagmi v2) — MetaMask or any
+  injected/WalletConnect wallet, with wrong-network detection that switches to Monad Testnet.
 - **Design:** "the estate notice board" — paper-cream, naira-green, every ledger entry is a
   pinned notice; executed expenses get the **HÁN KEDERE ✓** ("in plain sight") stamp linking to
   the settling tx.
@@ -84,11 +85,9 @@ nothing leaves silently.
   `proposeExpense` / `executeExpense` / `cancelExpense`.
 - **Reentrancy.** `executeExpense` is `nonReentrant` with effects-before-interaction; a malicious
   recipient cannot drain the fund (covered by a test).
-- **Honest limitation (reads):** because Monad's public RPC limits `eth_getLogs` to 100 blocks
-  and there's no backend indexer, the levy feed is scanned over the estate's genesis + tip
-  windows rather than the entire chain. Fund balance and all expense statuses are always exact
-  (read from storage); a very long-lived estate's mid-history *levy* cards beyond those windows
-  would need an indexer — the natural production add-on.
+- **Reads are trust-minimized.** The indexer only ever reflects on-chain events + storage; it
+  cannot move money or alter the ledger. If the backend is down, the app falls back to reading
+  membership straight from the contract. The chain remains the source of truth.
 - **Honest limitation (custody):** the chairman is a single signer. A production estate would put the
   chairman role behind a multisig (e.g. a Gnosis Safe) — the contract's access model drops in
   behind one unchanged. Called out plainly because it's the real next step.
@@ -121,17 +120,20 @@ forge install          # forge-std (already vendored)
 forge test -vvv        # 29 passing
 ```
 
-### Web
+### Web (Next.js + Supabase)
 
 ```bash
 cd web
 npm install
-cp .env.example .env.local        # set VITE_CONTRACT_ADDRESS, VITE_DEPLOY_BLOCK (WC id optional)
-npm run dev
+cp .env.example .env.local        # set NEXT_PUBLIC_CONTRACT_ADDRESS, NEXT_PUBLIC_DEPLOY_BLOCK,
+                                  # DATABASE_URL + DIRECT_URL (Supabase), SESSION_SECRET
+npm run db:push                   # create tables in Supabase
+npm run backfill                  # index the chain into Postgres (one time)
+npm run dev                       # http://localhost:3000
 ```
 
-The app reads everything from the chain; with no `VITE_CONTRACT_ADDRESS` set it tells you so
-rather than showing fake data.
+Full backend setup + endpoint reference: see **`BACKEND.md`**. Writes always go to the contract;
+reads come from the indexed API (with a direct-chain fallback if the DB is unreachable).
 
 ---
 
@@ -160,11 +162,11 @@ FUND_ADDRESS=<ADDRESS> forge script script/Seed.s.sol --rpc-url $MONAD_RPC_URL -
 FUND_ADDRESS=<ADDRESS> PASS=2 forge script script/Seed.s.sol --rpc-url $MONAD_RPC_URL --broadcast
 
 # 4. Wire the frontend
-#   web/.env.local:  VITE_CONTRACT_ADDRESS=<ADDRESS>   VITE_DEPLOY_BLOCK=<deploy block>
+#   web/.env.local:  NEXT_PUBLIC_CONTRACT_ADDRESS=<ADDRESS>   NEXT_PUBLIC_DEPLOY_BLOCK=<deploy block>
 ```
 
-Then deploy `web/` to Vercel or Cloudflare Pages (build `npm run build`, output `dist/`,
-SPA rewrite already in `web/vercel.json`). Paste the four **Live links** above.
+Then set up the database + deploy `web/` (Next.js) to Vercel — see **`BACKEND.md`** and
+`DEPLOY_WEB.md`. Paste the four **Live links** above.
 
 ---
 
@@ -176,7 +178,10 @@ kedere/
 │   ├── src/EstateFund.sol
 │   ├── test/EstateFund.t.sol      # 29 tests
 │   └── script/{Deploy,Seed}.s.sol
-├── web/                  # Vite + React + TS + wagmi/viem (event-driven, no backend)
-├── README.md
+├── web/                  # Next.js app + API (React UI, wagmi/viem, Prisma/Supabase indexer)
+│   ├── src/app/          # routes (catch-all SPA) + API (/api/estates, /api/wallets, /api/auth …)
+│   ├── src/server/       # indexer, prisma, SIWE auth (server-only)
+│   └── prisma/schema.prisma
+├── README.md · BACKEND.md · DEPLOY_WEB.md
 └── SUBMISSION.md
 ```

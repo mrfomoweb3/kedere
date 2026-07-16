@@ -1,4 +1,3 @@
-import "server-only";
 import { createPublicClient, http, type PublicClient } from "viem";
 import { monadTestnet } from "../contract/chain";
 import { MONAD_RPC_URL } from "../contract/config";

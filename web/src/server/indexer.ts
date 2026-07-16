@@ -1,5 +1,4 @@
-import "server-only";
-import { getAbiItem, parseEventLogs, type Log } from "viem";
+import { parseEventLogs, type Log } from "viem";
 import { serverClient } from "./chain";
 import { prisma } from "./prisma";
 import {
@@ -23,16 +22,34 @@ async function blockTs(block: bigint): Promise<number> {
   return Number(b.timestamp);
 }
 
+const CONCURRENCY = 20;
+
+async function getLogsRetry(fromBlock: bigint, toBlock: bigint): Promise<Log[]> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await serverClient.getLogs({
+        address: ESTATE_FUND_ADDRESS,
+        fromBlock,
+        toBlock,
+      });
+    } catch (e) {
+      if (attempt >= 4) throw e;
+      await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+    }
+  }
+}
+
 async function scanChunked(from: bigint, to: bigint): Promise<Log[]> {
-  const out: Log[] = [];
+  const ranges: [bigint, bigint][] = [];
   for (let start = from; start <= to; start += CHUNK) {
     const end = start + CHUNK - 1n > to ? to : start + CHUNK - 1n;
-    const logs = await serverClient.getLogs({
-      address: ESTATE_FUND_ADDRESS,
-      fromBlock: start,
-      toBlock: end,
-    });
-    out.push(...logs);
+    ranges.push([start, end]);
+  }
+  const out: Log[] = [];
+  for (let i = 0; i < ranges.length; i += CONCURRENCY) {
+    const batch = ranges.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(([a, b]) => getLogsRetry(a, b)));
+    for (const r of results) out.push(...r);
   }
   return out;
 }
@@ -120,10 +137,13 @@ export async function sync(): Promise<{ from: number; to: number; latest: number
   const logs = await scanChunked(startFrom, to);
   const parsed = parseEventLogs({ abi, logs }) as any[];
 
+  // Pass 1: which estates does this batch touch? Create/refresh their parent
+  // rows (Estate + Expense) from storage FIRST, so child inserts satisfy FKs.
   const touchedEstates = new Set<number>();
-  const ev = getAbiItem({ abi, name: "ExpenseProposed" }); // (ensures abi valid)
-  void ev;
+  for (const log of parsed) touchedEstates.add(Number(log.args.estateId));
+  for (const id of touchedEstates) await refreshEstate(id);
 
+  // Pass 2: append feed events + residents + proposing-tx links.
   for (const log of parsed) {
     const a = log.args;
     const estateId = Number(a.estateId);
@@ -134,13 +154,7 @@ export async function sync(): Promise<{ from: number; to: number; latest: number
       logIndex: Number(log.logIndex),
     };
 
-    if (log.eventName === "EstateCreated") {
-      touchedEstates.add(estateId);
-      continue;
-    }
     if (log.eventName === "ExpenseProposed") {
-      touchedEstates.add(estateId);
-      // record the proposing tx for the explorer link
       await prisma.expense
         .updateMany({
           where: { estateId, expenseId: Number(a.expenseId) },
@@ -149,12 +163,7 @@ export async function sync(): Promise<{ from: number; to: number; latest: number
         .catch(() => {});
       continue;
     }
-    if (log.eventName === "ExpenseExecuted" || log.eventName === "ExpenseCancelled") {
-      touchedEstates.add(estateId);
-      continue; // status is refreshed from storage
-    }
 
-    // feed events: levy | joined | objected
     let kind: string | null = null;
     let data: any = {};
     if (log.eventName === "LevyPaid") {
@@ -165,11 +174,9 @@ export async function sync(): Promise<{ from: number; to: number; latest: number
         period: a.period,
         unitLabel: a.unitLabel,
       };
-      touchedEstates.add(estateId);
     } else if (log.eventName === "ResidentJoined") {
       kind = "joined";
       data = { resident: a.resident, unitLabel: a.unitLabel };
-      touchedEstates.add(estateId);
       await prisma.resident.upsert({
         where: { estateId_address: { estateId, address: a.resident.toLowerCase() } },
         create: {
@@ -187,7 +194,6 @@ export async function sync(): Promise<{ from: number; to: number; latest: number
         resident: a.resident,
         totalObjections: Number(a.totalObjections),
       };
-      touchedEstates.add(estateId);
     }
 
     if (kind) {
@@ -199,8 +205,6 @@ export async function sync(): Promise<{ from: number; to: number; latest: number
       });
     }
   }
-
-  for (const id of touchedEstates) await refreshEstate(id);
 
   await prisma.indexState.upsert({
     where: { contract: CONTRACT },

@@ -1,4 +1,3 @@
-import "server-only";
 import { prisma } from "./prisma";
 
 // JSON-serializable shapes returned by the API (bigints → strings).
