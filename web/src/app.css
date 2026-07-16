@@ -1261,8 +1261,9 @@
 }
 .stack-card {
   position: sticky;
-  top: 104px;
-  min-height: clamp(280px, 48vh, 420px);
+  /* staggered so stacked cards peek like a deck instead of vanishing */
+  top: calc(100px + var(--i, 0) * 26px);
+  min-height: clamp(280px, 46vh, 400px);
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 26px;
@@ -1273,9 +1274,10 @@
   gap: clamp(20px, 3vw, 40px);
   align-items: center;
   overflow: hidden;
-  will-change: transform, filter;
-  background-image: radial-gradient(rgba(26, 23, 20, 0.02) 1px, transparent 1px);
-  background-size: 5px 5px;
+  transform-origin: 50% 0%;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 .stack-n {
   font-family: var(--font-display);

@@ -63,23 +63,27 @@ export function Landing() {
     )
       return;
     gsap.registerPlugin(ScrollTrigger);
-    const STICK = 104;
     const ctx = gsap.context(() => {
       const cards = gsap.utils.toArray<HTMLElement>(".stack-card");
       cards.forEach((card, i) => {
         if (i === cards.length - 1) return;
-        gsap.to(card, {
-          scale: 0.9,
-          filter: "brightness(0.92)",
-          transformOrigin: "50% 0%",
-          ease: "none",
-          scrollTrigger: {
-            trigger: cards[i + 1],
-            start: "top bottom-=80",
-            end: `top top+=${STICK}`,
-            scrub: true,
+        // As the next card scrolls up to overlap this one, ease this card back
+        // a touch (subtle scale) so it recedes into the deck without vanishing.
+        gsap.fromTo(
+          card,
+          { scale: 1 },
+          {
+            scale: 0.96 - (cards.length - 1 - i) * 0.01,
+            ease: "none",
+            force3D: true,
+            scrollTrigger: {
+              trigger: cards[i + 1],
+              start: "top bottom",
+              end: `top top+=${110 + i * 26}`,
+              scrub: 0.6,
+            },
           },
-        });
+        );
       });
       ScrollTrigger.refresh();
     }, stackRef);
@@ -196,8 +200,12 @@ export function Landing() {
           <p className="sec-lead">Three moves, all in the open.</p>
         </div>
         <div className="stack" ref={stackRef}>
-          {STEPS.map((s) => (
-            <article className="stack-card" key={s.n}>
+          {STEPS.map((s, i) => (
+            <article
+              className="stack-card"
+              key={s.n}
+              style={{ "--i": i } as Record<string, number>}
+            >
               <span className="stack-n">{s.n}</span>
               <div className="stack-content">
                 <h3>{s.t}</h3>
