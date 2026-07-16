@@ -6,7 +6,7 @@ import { useNavigate } from "../router";
 import { WalletButton } from "../components/WalletButton";
 import { ScrambleText } from "../components/ScrambleText";
 import { BrandGlyph } from "../components/BrandGlyph";
-import { fmtMon, relTime } from "../lib/format";
+import { fmtMon } from "../lib/format";
 import { REPO_URL } from "../contract/config";
 
 const PHRASES = [
@@ -110,11 +110,13 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ── proof: trust without trust ── */}
+      {/* ── proof: where money meets trust ── */}
       <section className="proof container">
         <div className="proof-left">
-          <h2 className="sec-title">
-            Where money meets <span className="ink-lime">proof</span>
+          <h2 className="proof-title">
+            Where money meets
+            <br />
+            <span className="proof-title-soft">lasting trust</span>
           </h2>
           <p className="sec-lead">
             Nigerian estates collect levies for diesel, security and water — then
@@ -122,12 +124,33 @@ export function Landing() {
             nobody can fake. No trust required — just look.
           </p>
           <div className="proof-stats">
-            <div className="proof-stat"><span className="num">100%</span><small>On-chain</small></div>
-            <div className="proof-stat"><span className="num">0</span><small>Trust required</small></div>
-            <div className="proof-stat"><span className="num">29<span className="tick">✓</span></span><small>Tests passing</small></div>
+            <div className="proof-stat">
+              <div className="proof-stat-top">
+                <span className="num">100%</span>
+                <span className="proof-unit">On-chain</span>
+              </div>
+              <small>Every record public</small>
+            </div>
+            <span className="proof-div" />
+            <div className="proof-stat">
+              <div className="proof-stat-top">
+                <span className="num">0</span>
+                <span className="proof-unit">Trust</span>
+              </div>
+              <small>Just read the chain</small>
+            </div>
+            <span className="proof-div" />
+            <div className="proof-stat">
+              <div className="proof-stat-top">
+                <span className="num">29<span className="tick">✓</span></span>
+                <span className="proof-unit">Tests</span>
+              </div>
+              <small>All passing</small>
+            </div>
           </div>
+          <EstateShowcase onOpen={() => navigate("/estate/0")} />
         </div>
-        <DemoPeek onOpen={() => navigate("/estate/0")} />
+        <FindCard navigate={navigate} />
       </section>
 
       {/* ── how it works (large rows) ── */}
@@ -203,8 +226,9 @@ export function Landing() {
   );
 }
 
-// Live preview of the demo estate — real indexed data, no placeholders.
-function DemoPeek({ onOpen }: { onOpen: () => void }) {
+// A featured "property"-style card for the demo estate — real live balance
+// pulled from the chain, over the estate photo.
+function EstateShowcase({ onOpen }: { onOpen: () => void }) {
   const { data } = useQuery({
     queryKey: ["demo-peek"],
     queryFn: async () => {
@@ -216,46 +240,67 @@ function DemoPeek({ onOpen }: { onOpen: () => void }) {
     retry: false,
   });
 
-  const recent = (data?.feed ?? [])
-    .filter((e: any) => e.kind === "levy" || e.kind === "proposed")
-    .slice(0, 3);
-
   return (
-    <button className="demo-peek card" onClick={onOpen} aria-label="Open the live demo estate">
-      <div className="peek-head">
-        <span className="peek-live"><span className="peek-dot" /> Live · Monad testnet</span>
-        <span className="chip chip-paid">Demo</span>
+    <button className="estate-showcase" onClick={onOpen} aria-label="Open the live demo estate">
+      <span className="showcase-live"><span className="peek-dot" /> Live · Monad testnet</span>
+      <div className="showcase-body">
+        <div className="showcase-meta">
+          <span className="showcase-name">{data?.meta?.name ?? "Peace Court Estate, Abuja"}</span>
+          <span className="showcase-bal num">
+            {data ? fmtMon(BigInt(data.meta.balance)) : "0.0700"} MON
+            <small>
+              {data ? `${data.meta.residentCount} residents` : "in the fund"}
+            </small>
+          </span>
+        </div>
+        <span className="showcase-arrow" aria-hidden>→</span>
       </div>
-      <h3 className="peek-name">{data?.meta?.name ?? "Peace Court Estate, Abuja"}</h3>
-      <div className="peek-balance">
-        <span className="num">{data ? fmtMon(BigInt(data.meta.balance)) : "0.0700"}</span>
-        <span className="peek-unit">MON in the fund</span>
-      </div>
-      <div className="peek-sub muted">
-        {data ? `${data.meta.residentCount} residents · ${data.feed.length} ledger entries` : "reading the chain…"}
-      </div>
-      <div className="peek-feed">
-        {recent.map((e: any, i: number) => (
-          <div className="peek-line" key={i}>
-            {e.kind === "levy" ? (
-              <>
-                <span className="peek-tag paid">Levy</span>
-                <span className="peek-txt">{e.name ?? e.unitLabel}</span>
-                <span className="num pos">+{fmtMon(BigInt(e.amount))}</span>
-              </>
-            ) : (
-              <>
-                <span className="peek-tag prop">Expense</span>
-                <span className="peek-txt">{e.memo}</span>
-                <span className="num neg">−{fmtMon(BigInt(e.amount))}</span>
-              </>
-            )}
-            <span className="peek-when muted">{relTime(e.timestamp)}</span>
-          </div>
-        ))}
-      </div>
-      <span className="peek-open">Open the ledger →</span>
     </button>
+  );
+}
+
+// "Find your estate" card — look up any estate by ID, or start your own.
+// Real actions only (no placeholder search).
+function FindCard({ navigate }: { navigate: (to: string) => void }) {
+  const [id, setId] = useState("");
+  return (
+    <div className="card find-card">
+      <h3 className="find-title">Find your estate</h3>
+      <p className="muted find-sub">Look up any estate by its ID — or start your own.</p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = id.trim();
+          if (v !== "") navigate(`/estate/${v}`);
+        }}
+      >
+        <label className="find-label">Estate ID</label>
+        <div className="find-field">
+          <span className="find-ic">#</span>
+          <input
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            placeholder="0"
+            inputMode="numeric"
+          />
+        </div>
+        <button className="btn btn-brass block find-go" type="submit">
+          View estate →
+        </button>
+      </form>
+
+      <div className="find-or"><span>or</span></div>
+
+      <div className="find-actions">
+        <button className="btn btn-primary block" onClick={() => navigate("/welcome")}>
+          Create an estate
+        </button>
+        <button className="btn btn-ghost block" onClick={() => navigate("/welcome")}>
+          Join an estate
+        </button>
+      </div>
+    </div>
   );
 }
 
