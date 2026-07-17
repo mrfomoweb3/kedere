@@ -3,6 +3,7 @@
 import { Landing } from "./routes/Landing";
 import { Welcome } from "./routes/Welcome";
 import { Estate } from "./routes/Estate";
+import { Docs } from "./routes/Docs";
 import { usePath } from "./router";
 import { ESTATE_FUND_ADDRESS } from "./contract/config";
 import { MissingConfig } from "./components/MissingConfig";
@@ -22,5 +23,6 @@ export default function App() {
   const match = path.match(/^\/estate\/(\d+)\/?$/);
   if (match) return <Estate id={BigInt(match[1])} />;
   if (/^\/(welcome|app)\/?$/.test(path)) return <Welcome />;
+  if (/^\/docs\/?$/.test(path)) return <Docs />;
   return <Landing />;
 }

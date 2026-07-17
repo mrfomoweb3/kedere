@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { useEstate } from "../lib/useEstate";
@@ -165,7 +165,7 @@ export function Estate({ id }: { id: bigint }) {
             <ExpensesTab data={data} meta={meta} nowSec={nowSec} isChairman={isChairman} isResident={isResident} busy={busy} onObject={object} onExecute={execute} canPropose={canAct && isChairman} onPropose={() => setModal("propose")} />
           )}
           {tab === "residents" && (
-            <ResidentsTab residents={data.residents} residentCount={Number(meta.residentCount)} />
+            <ResidentsTab residents={data.residents} residentCount={Number(meta.residentCount)} levies={stats.levies} />
           )}
           {tab === "profile" && (
             <ProfileTab meta={meta} myRow={myRow} address={address} isChairman={isChairman} isResident={isResident} connected={canAct} onConnect={() => setTab("profile")} />
@@ -318,33 +318,82 @@ function ExpensesTab({ data, meta, nowSec, isChairman, isResident, busy, onObjec
 }
 
 // ── Residents tab (who's paid / who's owing) ────────────────────────────────
-function ResidentsTab({ residents, residentCount }: { residents: ResidentRow[]; residentCount: number }) {
+function ResidentsTab({ residents, residentCount, levies }: { residents: ResidentRow[]; residentCount: number; levies: LevyEntry[] }) {
   const paid = residents.filter((r) => r.paidThisMonth).length;
-  const owing = residents.filter((r) => !r.paidThisMonth);
+  const owingCount = residents.filter((r) => !r.paidThisMonth).length;
+  const [filter, setFilter] = useState<"all" | "paid" | "owing">("all");
+  const [open, setOpen] = useState<string | null>(null);
+
+  const shown = residents.filter((r) =>
+    filter === "all" ? true : filter === "paid" ? r.paidThisMonth : !r.paidThisMonth,
+  );
+  const historyFor = (addr: string) =>
+    levies
+      .filter((l) => l.resident.toLowerCase() === addr.toLowerCase())
+      .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+
   return (
     <>
-      <div className="tab-head"><div><h2 className="overview-h">Residents</h2><span className="muted">{residentCount} members · {paid} paid this month · {owing.length} owing</span></div></div>
+      <div className="tab-head"><div><h2 className="overview-h">Residents</h2><span className="muted">{residentCount} members · {paid} paid this month · {owingCount} owing</span></div></div>
       <div className="stat-grid stat-grid-3">
         <StatCard label="Members" value={residentCount.toString()} sub="registered on chain" />
         <StatCard label="Paid this month" value={paid.toString()} sub="up to date" accent />
-        <StatCard label="Owing" value={owing.length.toString()} sub="no payment this month" />
+        <StatCard label="Owing" value={owingCount.toString()} sub="no payment this month" />
       </div>
+
+      <div className="filter-row">
+        {(["all", "paid", "owing"] as const).map((f) => (
+          <button key={f} className={`filter-pill ${filter === f ? "filter-pill-on" : ""}`} onClick={() => setFilter(f)}>
+            {f === "all" ? "All" : f === "paid" ? "Paid" : "Owing"}
+            <span className="filter-count">{f === "all" ? residents.length : f === "paid" ? paid : owingCount}</span>
+          </button>
+        ))}
+        <span className="muted filter-hint">Click a resident to see their payments</span>
+      </div>
+
       <section className="card table-card">
         <div className="table-wrap">
           <table className="ledger-table">
             <thead><tr><th>Unit</th><th>Name</th><th className="ta-r">Total paid</th><th className="ta-r">Levies</th><th>Last paid</th><th>This month</th><th /></tr></thead>
             <tbody>
-              {residents.map((r) => (
-                <tr key={r.address}>
-                  <td className="td-type">{r.unitLabel}{r.isChairman && <span className="chip chip-paid role-tag">Chairman</span>}</td>
-                  <td>{r.name ?? <span className="muted">—</span>}</td>
-                  <td className="ta-r num">{fmtMon(r.totalPaid)}</td>
-                  <td className="ta-r num muted">{r.levyCount}</td>
-                  <td className="muted">{r.lastPaidAt ? relTime(r.lastPaidAt) : "never"}</td>
-                  <td>{r.paidThisMonth ? <span className="chip chip-paid">Paid</span> : <span className="chip chip-cancelled">Owing</span>}</td>
-                  <td className="ta-r"><a className="tx" href={explorerAddr(r.address)} target="_blank" rel="noreferrer">↗</a></td>
-                </tr>
-              ))}
+              {shown.map((r) => {
+                const isOpen = open === r.address;
+                const hist = isOpen ? historyFor(r.address) : [];
+                return (
+                  <Fragment key={r.address}>
+                    <tr className="row-click" onClick={() => setOpen(isOpen ? null : r.address)}>
+                      <td className="td-type"><span className={`row-caret ${isOpen ? "row-caret-open" : ""}`}>▸</span>{r.unitLabel}{r.isChairman && <span className="chip chip-paid role-tag">Chairman</span>}</td>
+                      <td>{r.name ?? <span className="muted">—</span>}</td>
+                      <td className="ta-r num">{fmtMon(r.totalPaid)}</td>
+                      <td className="ta-r num muted">{r.levyCount}</td>
+                      <td className="muted">{r.lastPaidAt ? relTime(r.lastPaidAt) : "never"}</td>
+                      <td>{r.paidThisMonth ? <span className="chip chip-paid">Paid</span> : <span className="chip chip-cancelled">Owing</span>}</td>
+                      <td className="ta-r"><a className="tx" href={explorerAddr(r.address)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>↗</a></td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="drill-row">
+                        <td colSpan={7}>
+                          {hist.length === 0 ? (
+                            <span className="muted">No payments yet from this resident.</span>
+                          ) : (
+                            <div className="drill">
+                              {hist.map((l, i) => (
+                                <div className="drill-line" key={i}>
+                                  <span className="peek-tag paid">Levy</span>
+                                  <span className="num pos">+{fmtMon(l.amount)} MON</span>
+                                  <span className="muted">{l.period}</span>
+                                  <span className="muted">{relTime(l.timestamp)}</span>
+                                  {l.txHash && l.txHash !== "0x" && <a className="tx" href={explorerTx(l.txHash)} target="_blank" rel="noreferrer">↗</a>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

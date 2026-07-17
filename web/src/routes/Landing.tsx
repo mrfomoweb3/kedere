@@ -9,7 +9,6 @@ import { WalletButton } from "../components/WalletButton";
 import { ScrambleText } from "../components/ScrambleText";
 import { BrandGlyph } from "../components/BrandGlyph";
 import { fmtMon } from "../lib/format";
-import { REPO_URL } from "../contract/config";
 
 const PHRASES = [
   { a: "Your estate's money,", b: "in plain sight." }, // English
@@ -110,20 +109,9 @@ export function Landing() {
             <span className="brand-name">KEDERE</span>
           </div>
           <div className="hero-nav-right">
-            {REPO_URL ? (
-              <a className="hero-link" href={REPO_URL} target="_blank" rel="noreferrer">
-                Docs
-              </a>
-            ) : (
-              <button
-                className="hero-link"
-                onClick={() =>
-                  document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                Docs
-              </button>
-            )}
+            <button className="hero-link" onClick={() => navigate("/docs")}>
+              Docs
+            </button>
             <WalletButton />
           </div>
         </header>
