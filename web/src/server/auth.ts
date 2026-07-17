@@ -31,11 +31,16 @@ export async function readNonceCookie(): Promise<string | undefined> {
   return (await cookies()).get(NONCE_COOKIE)?.value;
 }
 
+const ISSUER = "kedere";
+const AUDIENCE = "kedere";
+
 export async function startSession(address: string) {
   const token = await new SignJWT({ sub: address.toLowerCase() })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setIssuer(ISSUER)
+    .setAudience(AUDIENCE)
+    .setExpirationTime("24h")
     .sign(secret());
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, {
@@ -52,7 +57,10 @@ export async function getSessionAddress(): Promise<string | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
+    const { payload } = await jwtVerify(token, secret(), {
+      issuer: ISSUER,
+      audience: AUDIENCE,
+    });
     return (payload.sub as string) ?? null;
   } catch {
     return null;

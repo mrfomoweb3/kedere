@@ -16,7 +16,13 @@ export async function POST(req: Request) {
   }
   try {
     const siwe = new SiweMessage(message);
-    const { data } = await siwe.verify({ signature, nonce });
+    // Bind the signature to this app's origin (from the request host) and to
+    // Monad testnet — prevents cross-domain / cross-chain replay of a signature.
+    const host = req.headers.get("host") ?? undefined;
+    const { data } = await siwe.verify({ signature, nonce, domain: host });
+    if (data.chainId !== 10143) {
+      return NextResponse.json({ error: "wrong chain" }, { status: 401 });
+    }
     await startSession(data.address);
     return NextResponse.json({ address: data.address.toLowerCase() });
   } catch {

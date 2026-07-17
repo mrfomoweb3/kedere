@@ -1287,6 +1287,41 @@
   line-height: 0.9;
   align-self: start;
 }
+
+/* each card a distinct on-brand tint + matching accent */
+.stack-card:nth-child(1) {
+  background: #edf3e8;
+  border-color: #d8e6cf;
+}
+.stack-card:nth-child(1) .stack-n {
+  color: var(--green);
+}
+.stack-card:nth-child(1) .stack-mark {
+  background: #d8e8cf;
+  color: var(--green);
+}
+.stack-card:nth-child(2) {
+  background: #f7efdd;
+  border-color: #ecdcbc;
+}
+.stack-card:nth-child(2) .stack-n {
+  color: var(--brass);
+}
+.stack-card:nth-child(2) .stack-mark {
+  background: #efe1c0;
+  color: var(--brass);
+}
+.stack-card:nth-child(3) {
+  background: #eef6d8;
+  border-color: #dcebb6;
+}
+.stack-card:nth-child(3) .stack-n {
+  color: #5f7d1c;
+}
+.stack-card:nth-child(3) .stack-mark {
+  background: #e2f0ba;
+  color: #5f7d1c;
+}
 .stack-content h3 {
   font-size: clamp(24px, 3vw, 40px);
   margin-bottom: 14px;
