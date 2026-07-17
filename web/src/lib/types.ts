@@ -77,10 +77,23 @@ export interface ExpenseView {
   objections: number;
   status: ExpenseStatus;
   cancelReason?: string;
+  txHash?: string;
+}
+
+export interface ResidentRow {
+  address: Hex;
+  unitLabel: string;
+  name: string | null;
+  isChairman: boolean;
+  totalPaid: bigint;
+  levyCount: number;
+  lastPaidAt: number | null;
+  paidThisMonth: boolean;
 }
 
 export interface EstateData {
   meta: EstateMeta;
   feed: LedgerEntry[];
   expenses: Map<string, ExpenseView>;
+  residents: ResidentRow[];
 }

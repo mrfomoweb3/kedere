@@ -22,12 +22,22 @@ export interface ApiEstate {
     cancelReason?: string;
     txHash?: string;
   }[];
+  residents: {
+    address: string;
+    unitLabel: string;
+    name: string | null;
+    isChairman: boolean;
+    totalPaid: string;
+    levyCount: number;
+    lastPaidAt: number | null;
+    paidThisMonth: boolean;
+  }[];
 }
 
 export async function getEstateData(id: number): Promise<ApiEstate | null> {
   const estate = await prisma.estate.findUnique({
     where: { id },
-    include: { events: true, expenses: true },
+    include: { events: true, expenses: true, residents: true },
   });
   if (!estate) return null;
 
@@ -122,6 +132,39 @@ export async function getEstateData(id: number): Promise<ApiEstate | null> {
     return b.logIndex - a.logIndex;
   });
 
+  // ── resident roster + payment status ────────────────────────────────────
+  const now = new Date();
+  const thisMonth = now.getUTCFullYear() * 12 + now.getUTCMonth();
+  const leviesByAddr = new Map<string, { total: bigint; count: number; last: number | null; paidThisMonth: boolean }>();
+  for (const e of estate.events) {
+    if (e.kind !== "levy") continue;
+    const d = e.data as any;
+    const addr = String(d.resident).toLowerCase();
+    const cur = leviesByAddr.get(addr) ?? { total: 0n, count: 0, last: null, paidThisMonth: false };
+    cur.total += BigInt(d.amount);
+    cur.count += 1;
+    cur.last = cur.last === null ? e.timestamp : Math.max(cur.last, e.timestamp);
+    const dt = new Date(e.timestamp * 1000);
+    if (dt.getUTCFullYear() * 12 + dt.getUTCMonth() === thisMonth) cur.paidThisMonth = true;
+    leviesByAddr.set(addr, cur);
+  }
+  const chair = estate.chairman.toLowerCase();
+  const residents = estate.residents
+    .map((r) => {
+      const l = leviesByAddr.get(r.address);
+      return {
+        address: r.address,
+        unitLabel: r.unitLabel,
+        name: nameOf.get(r.address) ?? null,
+        isChairman: r.address === chair,
+        totalPaid: (l?.total ?? 0n).toString(),
+        levyCount: l?.count ?? 0,
+        lastPaidAt: l?.last ?? null,
+        paidThisMonth: l?.paidThisMonth ?? false,
+      };
+    })
+    .sort((a, b) => (BigInt(b.totalPaid) > BigInt(a.totalPaid) ? 1 : -1));
+
   return {
     meta: {
       id: estate.id,
@@ -133,6 +176,7 @@ export async function getEstateData(id: number): Promise<ApiEstate | null> {
     },
     feed,
     expenses,
+    residents,
   };
 }
 

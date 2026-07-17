@@ -434,6 +434,112 @@
   color: var(--green);
 }
 
+/* ── labeled sidebar (tabbed dashboard) ── */
+.sidebar-wide {
+  width: 224px;
+  align-items: stretch;
+  padding: 18px 14px;
+}
+.sidebar-wide .side-brand {
+  margin: 0 0 18px 8px;
+}
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 12px;
+  color: var(--ink-soft);
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+}
+.side-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.side-item:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+.side-item-active {
+  background: #e7f0e6;
+  color: var(--green);
+}
+.side-foot {
+  margin-top: auto;
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+/* ── tab heads + variants ── */
+.tab-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.tab-head .overview-h {
+  margin-bottom: 2px;
+}
+.stat-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.role-tag {
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 10px;
+}
+.profile-card {
+  padding: 26px;
+  max-width: 560px;
+}
+.profile-card input:disabled {
+  background: var(--paper-2);
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .sidebar-wide {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 12px;
+    gap: 6px;
+  }
+  .sidebar-wide .side-brand {
+    margin: 0;
+  }
+  .sidebar-wide .side-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+  .side-item span {
+    display: none;
+  }
+  .side-item {
+    padding: 10px;
+  }
+  .side-foot {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+    display: flex;
+  }
+  .dash-shell {
+    flex-direction: column;
+  }
+}
+
 .dash-main {
   flex: 1;
   min-width: 0;

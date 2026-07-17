@@ -81,6 +81,7 @@ function toExpense(x: any): ExpenseView {
     objections: x.objections,
     status: x.status,
     cancelReason: x.cancelReason,
+    txHash: x.txHash,
   };
 }
 
@@ -95,6 +96,16 @@ async function fetchEstate(id: bigint): Promise<EstateData | null> {
     expenses: new Map<string, ExpenseView>(
       j.expenses.map((x: any) => [String(x.expenseId), toExpense(x)]),
     ),
+    residents: (j.residents ?? []).map((r: any) => ({
+      address: r.address,
+      unitLabel: r.unitLabel,
+      name: r.name,
+      isChairman: r.isChairman,
+      totalPaid: BigInt(r.totalPaid),
+      levyCount: r.levyCount,
+      lastPaidAt: r.lastPaidAt,
+      paidThisMonth: r.paidThisMonth,
+    })),
   };
 }
 

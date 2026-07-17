@@ -3,6 +3,7 @@ import { formatEther, parseEther } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import { useEstate } from "../lib/useEstate";
 import { useWrite } from "../lib/useWrite";
+import { useAuth } from "../lib/useAuth";
 import { WalletButton } from "../components/WalletButton";
 import { AreaChart } from "../components/AreaChart";
 import { Gauge } from "../components/Gauge";
@@ -11,8 +12,9 @@ import { HanKedereStamp } from "../components/Stamp";
 import { BrandGlyph } from "../components/BrandGlyph";
 import { useNavigate } from "../router";
 import { fmtMon, truncAddr, relTime, countdown } from "../lib/format";
-import { getProfile } from "../lib/profile";
-import type { ExpenseView, LedgerEntry, LevyEntry } from "../lib/types";
+import { getProfile, saveProfile } from "../lib/profile";
+import { useToasts } from "../components/Toasts";
+import type { ExpenseView, LedgerEntry, LevyEntry, ResidentRow } from "../lib/types";
 import {
   ESTATE_FUND_ABI,
   ESTATE_FUND_ADDRESS,
@@ -20,6 +22,16 @@ import {
   explorerAddr,
   explorerTx,
 } from "../contract/config";
+
+type Tab = "overview" | "levies" | "expenses" | "residents" | "profile";
+
+const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+  { key: "overview", label: "Overview", icon: <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" /> },
+  { key: "levies", label: "Levies", icon: <path d="M4 6h16M4 12h16M4 18h10" strokeLinecap="round" /> },
+  { key: "expenses", label: "Expenses", icon: <path d="M6 3h9l3 3v15H6zM14 3v4h4M9 13h6M9 17h6" strokeLinecap="round" strokeLinejoin="round" /> },
+  { key: "residents", label: "Residents", icon: <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0-2-5.2M21 20a6 6 0 0 0-4-5.7" strokeLinecap="round" strokeLinejoin="round" /> },
+  { key: "profile", label: "Profile", icon: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0" strokeLinecap="round" strokeLinejoin="round" /> },
+];
 
 function useNow() {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -29,11 +41,8 @@ function useNow() {
   }, []);
   return now;
 }
-
-function currentPeriod() {
-  return new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
-}
-
+const currentPeriod = () =>
+  new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
 const mon = (wei: bigint) => Number(formatEther(wei));
 
 export function Estate({ id }: { id: bigint }) {
@@ -42,6 +51,7 @@ export function Estate({ id }: { id: bigint }) {
   const { address, isConnected, chainId } = useAccount();
   const { data, isLoading, isError } = useEstate(id);
   const { send, busy } = useWrite();
+  const [tab, setTab] = useState<Tab>("overview");
 
   const { data: residentFlag } = useReadContract({
     address: ESTATE_FUND_ADDRESS,
@@ -51,7 +61,6 @@ export function Estate({ id }: { id: bigint }) {
     query: { enabled: !!address, refetchInterval: 4000 },
   });
 
-  // modals + forms
   const [modal, setModal] = useState<null | "levy" | "propose">(null);
   const [amount, setAmount] = useState("0.05");
   const [period, setPeriod] = useState(currentPeriod());
@@ -65,145 +74,65 @@ export function Estate({ id }: { id: bigint }) {
     !!address && !!meta && address.toLowerCase() === meta.chairman.toLowerCase();
   const isResident = !!residentFlag || isChairman;
 
-  // ── derived analytics (all from real indexed data) ──────────────────────
   const stats = useMemo(() => {
     if (!data) return null;
     const levies = data.feed.filter((e) => e.kind === "levy") as LevyEntry[];
     const totalCollected = levies.reduce((s, e) => s + e.amount, 0n);
     const exps = [...data.expenses.values()];
-    const totalSpent = exps
-      .filter((x) => x.status === "EXECUTED")
-      .reduce((s, x) => s + x.amount, 0n);
+    const totalSpent = exps.filter((x) => x.status === "EXECUTED").reduce((s, x) => s + x.amount, 0n);
     const pending = exps.filter((x) => x.status === "PENDING");
-
     const sorted = [...levies].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
     let cum = 0;
-    const chart = sorted.map((e) => {
-      cum += mon(e.amount);
-      return { t: e.timestamp ?? 0, v: cum };
-    });
-
-    const unitMap = new Map<string, bigint>();
-    for (const e of levies)
-      unitMap.set(e.unitLabel, (unitMap.get(e.unitLabel) ?? 0n) + e.amount);
-    const byUnit = [...unitMap.entries()]
-      .map(([unit, amt]) => ({
-        unit,
-        amt,
-        pct: totalCollected > 0n ? Number((amt * 10000n) / totalCollected) / 100 : 0,
-      }))
-      .sort((a, b) => (a.amt > b.amt ? -1 : 1))
-      .slice(0, 5);
-
-    return {
-      levyCount: levies.length,
-      totalCollected,
-      totalSpent,
-      execCount: exps.filter((x) => x.status === "EXECUTED").length,
-      pending,
-      chart,
-      byUnit,
-    };
+    const chart = sorted.map((e) => { cum += mon(e.amount); return { t: e.timestamp ?? 0, v: cum }; });
+    return { levies, totalCollected, totalSpent, execCount: exps.filter((x) => x.status === "EXECUTED").length, pending, chart };
   }, [data]);
 
   if (isLoading) return <FullNote text="Loading the ledger…" spinner />;
   if (isError || !data || !meta || !stats)
     return (
-      <FullNote
-        text={`No estate #${id.toString()} found.`}
-        cta={
-          <button className="btn btn-primary" onClick={() => navigate("/welcome")}>
-            Back to start
-          </button>
-        }
-      />
+      <FullNote text={`No estate #${id.toString()} found.`}
+        cta={<button className="btn btn-primary" onClick={() => navigate("/welcome")}>Back to start</button>} />
     );
 
   async function payLevy(e: React.FormEvent) {
     e.preventDefault();
-    await send({
-      functionName: "payLevy",
-      args: [id, period],
-      value: parseEther(amount || "0"),
-      pending: `Paying ${amount} MON levy…`,
-      success: `Levy of ${amount} MON paid.`,
-      onDone: () => setModal(null),
-    });
+    await send({ functionName: "payLevy", args: [id, period], value: parseEther(amount || "0"),
+      pending: `Paying ${amount} MON levy…`, success: `Levy of ${amount} MON paid.`, onDone: () => setModal(null) });
   }
   async function propose(e: React.FormEvent) {
     e.preventDefault();
-    await send({
-      functionName: "proposeExpense",
-      args: [id, recipient as `0x${string}`, parseEther(expAmount || "0"), memo],
-      pending: "Posting the expense proposal…",
-      success: "Expense proposed.",
-      onDone: () => {
-        setRecipient("");
-        setExpAmount("");
-        setMemo("");
-        setModal(null);
-      },
-    });
+    await send({ functionName: "proposeExpense", args: [id, recipient as `0x${string}`, parseEther(expAmount || "0"), memo],
+      pending: "Posting the expense proposal…", success: "Expense proposed.",
+      onDone: () => { setRecipient(""); setExpAmount(""); setMemo(""); setModal(null); } });
   }
-  const object = (eid: bigint) =>
-    send({
-      functionName: "objectToExpense",
-      args: [id, eid],
-      pending: "Recording your objection…",
-      success: "Your objection is on the ledger.",
-    });
-  const execute = (eid: bigint) =>
-    send({
-      functionName: "executeExpense",
-      args: [id, eid],
-      pending: "Executing the expense…",
-      success: "Expense executed and paid out.",
-    });
+  const object = (eid: bigint) => send({ functionName: "objectToExpense", args: [id, eid], pending: "Recording your objection…", success: "Your objection is on the ledger." });
+  const execute = (eid: bigint) => send({ functionName: "executeExpense", args: [id, eid], pending: "Executing the expense…", success: "Expense executed and paid out." });
 
-  const scrollTo = (sel: string) =>
-    document.querySelector(sel)?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  // table = everything except still-pending proposals (those get action cards)
-  const tableFeed = data.feed.filter(
-    (e) =>
-      !(e.kind === "proposed" &&
-        data.expenses.get(e.expenseId.toString())?.status === "PENDING"),
-  );
-
-  const collectedNum = mon(stats.totalCollected);
-  const balanceNum = mon(meta.balance);
+  const canAct = isConnected && onChain;
+  const myRow = data.residents.find((r) => r.address.toLowerCase() === address?.toLowerCase());
 
   return (
     <div className="dash-shell">
-      <aside className="sidebar">
-        <button className="side-brand" onClick={() => navigate("/")} title="Kedere">
-          <BrandGlyph />
-        </button>
+      <aside className="sidebar sidebar-wide">
+        <button className="side-brand" onClick={() => navigate("/")} title="Kedere"><BrandGlyph /></button>
         <nav className="side-nav">
-          <SideIcon label="Overview" active onClick={() => scrollTo(".dash-body")}>
-            <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
-          </SideIcon>
-          <SideIcon label="Activity" onClick={() => scrollTo("#activity")}>
-            <path d="M4 6h16M4 12h16M4 18h10" strokeLinecap="round" />
-          </SideIcon>
-          <SideIcon label="By unit" onClick={() => scrollTo("#byunit")}>
-            <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" strokeLinecap="round" />
-          </SideIcon>
-          <a
-            className="side-icon"
-            href={explorerAddr(ESTATE_FUND_ADDRESS)}
-            target="_blank"
-            rel="noreferrer"
-            title="Contract on explorer"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
+          {TABS.map((t) => (
+            <button key={t.key} className={`side-item ${tab === t.key ? "side-item-active" : ""}`} onClick={() => setTab(t.key)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">{t.icon}</svg>
+              <span>{t.label}</span>
+            </button>
+          ))}
         </nav>
-        <SideIcon label="Home" onClick={() => navigate("/welcome")}>
-          <path d="M4 11 12 4l8 7M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" strokeLinecap="round" strokeLinejoin="round" />
-        </SideIcon>
+        <div className="side-foot">
+          <a className="side-item" href={explorerAddr(ESTATE_FUND_ADDRESS)} target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <span>Explorer</span>
+          </a>
+          <button className="side-item" onClick={() => navigate("/welcome")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 11 12 4l8 7M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <span>Home</span>
+          </button>
+        </div>
       </aside>
 
       <div className="dash-main">
@@ -215,199 +144,48 @@ export function Estate({ id }: { id: bigint }) {
             </a>
           </div>
           <div className="dash-actions">
-            {isConnected && onChain && isResident && (
-              <button className="btn btn-primary btn-sm" onClick={() => setModal("levy")}>
-                + Pay levy
-              </button>
+            {canAct && isResident && (
+              <button className="btn btn-primary btn-sm" onClick={() => setModal("levy")}>+ Pay levy</button>
             )}
-            {isConnected && onChain && isChairman && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setModal("propose")}>
-                Propose expense
-              </button>
+            {canAct && isChairman && (
+              <button className="btn btn-ghost btn-sm" onClick={() => setModal("propose")}>Propose expense</button>
             )}
             <WalletButton />
           </div>
         </header>
 
         <div className="dash-body">
-          <div className="overview-row">
-            <div>
-              <h2 className="overview-h">Overview</h2>
-              <span className="muted">
-                {isConnected && onChain && (isChairman || isResident) ? (
-                  <>
-                    You:{" "}
-                    <strong>
-                      {isChairman
-                        ? "Chairman"
-                        : `${getProfile(address)?.name ?? "Resident"}`}
-                    </strong>
-                  </>
-                ) : (
-                  "Public view · read-only"
-                )}
-              </span>
-            </div>
-            {isConnected && onChain && !isResident && (
-              <button className="btn btn-ghost btn-sm" onClick={() => navigate("/welcome")}>
-                Join this estate
-              </button>
-            )}
-          </div>
-
-          {/* stat cards */}
-          <div className="stat-grid">
-            <StatCard label="Fund balance" value={fmtMon(meta.balance)} unit="MON" sub="held in the contract" accent />
-            <StatCard label="Total collected" value={fmtMon(stats.totalCollected)} unit="MON" sub={`${stats.levyCount} ${stats.levyCount === 1 ? "levy" : "levies"} paid`} />
-            <StatCard label="Total spent" value={fmtMon(stats.totalSpent)} unit="MON" sub={`${stats.execCount} executed`} />
-            <StatCard label="Residents" value={meta.residentCount.toString()} sub={`${stats.pending.length} pending ${stats.pending.length === 1 ? "proposal" : "proposals"}`} />
-          </div>
-
-          {/* chart + gauge */}
-          <div className="chart-row">
-            <section className="card chart-card">
-              <div className="card-head">
-                <div>
-                  <h3>Levies collected</h3>
-                  <span className="muted num">Total {fmtMon(stats.totalCollected)} MON</span>
-                </div>
-                <span className="legend"><span className="legend-dot" /> Cumulative</span>
-              </div>
-              <AreaChart data={stats.chart} />
-            </section>
-            <section className="card gauge-card">
-              <div className="card-head"><h3>In the fund</h3></div>
-              <Gauge
-                value={balanceNum}
-                max={collectedNum || 1}
-                big={fmtMon(meta.balance)}
-                label="MON held"
-                caption={`of ${fmtMon(stats.totalCollected)} collected · ${fmtMon(stats.totalSpent)} spent`}
-              />
-            </section>
-          </div>
-
-          {/* active proposals */}
-          {stats.pending.length > 0 && (
-            <section className="proposals">
-              <h3 className="section-h">Awaiting decision</h3>
-              <div className="proposal-grid">
-                {stats.pending.map((x) => (
-                  <ProposalCard
-                    key={x.expenseId.toString()}
-                    exp={x}
-                    residentCount={Number(meta.residentCount)}
-                    nowSec={nowSec}
-                    isChairman={isChairman}
-                    isResident={isResident}
-                    busy={busy}
-                    onObject={object}
-                    onExecute={execute}
-                  />
-                ))}
-              </div>
-            </section>
+          {tab === "overview" && (
+            <OverviewTab meta={meta} stats={stats} data={data} nowSec={nowSec} isChairman={isChairman} isResident={isResident} busy={busy} onObject={object} onExecute={execute} />
           )}
-
-          {/* activity table + by unit */}
-          <div className="table-row">
-            <section className="card table-card" id="activity">
-              <div className="card-head">
-                <h3>Recent activity</h3>
-                <span className="muted">{data.feed.length} total</span>
-              </div>
-              {tableFeed.length === 0 ? (
-                <div className="table-empty muted">
-                  No entries yet. The ledger starts with the first levy.
-                </div>
-              ) : (
-                <div className="table-wrap">
-                  <table className="ledger-table">
-                    <thead>
-                      <tr>
-                        <th>Type</th>
-                        <th>Detail</th>
-                        <th className="ta-r">Amount</th>
-                        <th>Status</th>
-                        <th>When</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tableFeed.map((e) => (
-                        <ActivityRow
-                          key={`${e.blockNumber}-${e.logIndex}-${e.kind}`}
-                          entry={e}
-                          status={
-                            e.kind === "proposed"
-                              ? data.expenses.get(e.expenseId.toString())?.status
-                              : undefined
-                          }
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section className="card byunit-card" id="byunit">
-              <div className="card-head"><h3>By unit</h3></div>
-              {stats.byUnit.length === 0 ? (
-                <p className="muted">No levies yet.</p>
-              ) : (
-                <ul className="byunit-list">
-                  {stats.byUnit.map((u) => (
-                    <li key={u.unit}>
-                      <div className="byunit-top">
-                        <span className="byunit-name">{u.unit}</span>
-                        <span className="num muted">{fmtMon(u.amt)} MON</span>
-                      </div>
-                      <div className="byunit-bar">
-                        <div className="byunit-fill" style={{ width: `${u.pct}%` }} />
-                      </div>
-                      <span className="byunit-pct num muted">{u.pct.toFixed(0)}%</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </div>
+          {tab === "levies" && (
+            <LeviesTab levies={stats.levies} totalCollected={stats.totalCollected} canPay={canAct && isResident} onPay={() => setModal("levy")} />
+          )}
+          {tab === "expenses" && (
+            <ExpensesTab data={data} meta={meta} nowSec={nowSec} isChairman={isChairman} isResident={isResident} busy={busy} onObject={object} onExecute={execute} canPropose={canAct && isChairman} onPropose={() => setModal("propose")} />
+          )}
+          {tab === "residents" && (
+            <ResidentsTab residents={data.residents} residentCount={Number(meta.residentCount)} />
+          )}
+          {tab === "profile" && (
+            <ProfileTab meta={meta} myRow={myRow} address={address} isChairman={isChairman} isResident={isResident} connected={canAct} onConnect={() => setTab("profile")} />
+          )}
         </div>
       </div>
 
-      {/* modals */}
       <Modal open={modal === "levy"} onClose={() => setModal(null)} title="Pay levy">
         <form onSubmit={payLevy}>
-          <div className="field">
-            <label>Amount (MON)</label>
-            <input type="number" step="0.001" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required />
-          </div>
-          <div className="field">
-            <label>Period</label>
-            <input value={period} onChange={(e) => setPeriod(e.target.value)} required />
-          </div>
+          <div className="field"><label>Amount (MON)</label><input type="number" step="0.001" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div>
+          <div className="field"><label>Period</label><input value={period} onChange={(e) => setPeriod(e.target.value)} required /></div>
           <button className="btn btn-primary block" disabled={busy !== null} type="submit">Pay levy</button>
         </form>
       </Modal>
-
       <Modal open={modal === "propose"} onClose={() => setModal(null)} title="Propose expense">
         <form onSubmit={propose}>
-          <p className="muted rail-note">
-            Funds only move after the delay window and if residents don't block it.
-          </p>
-          <div className="field">
-            <label>Pay to (address)</label>
-            <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="0x…" required />
-          </div>
-          <div className="field">
-            <label>Amount (MON)</label>
-            <input type="number" step="0.001" min="0" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} required />
-          </div>
-          <div className="field">
-            <label>Memo</label>
-            <input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Diesel — 500L — July" required />
-          </div>
+          <p className="muted rail-note">Funds only move after the delay window and if residents don't block it.</p>
+          <div className="field"><label>Pay to (address)</label><input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="0x…" required /></div>
+          <div className="field"><label>Amount (MON)</label><input type="number" step="0.001" min="0" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} required /></div>
+          <div className="field"><label>Memo</label><input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Diesel — 500L — July" required /></div>
           <button className="btn btn-primary block" disabled={busy !== null} type="submit">Propose expense</button>
         </form>
       </Modal>
@@ -415,76 +193,232 @@ export function Estate({ id }: { id: bigint }) {
   );
 }
 
-// ── sub-components ──────────────────────────────────────────────────────────
-
-function SideIcon({
-  children,
-  label,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
+// ── Overview tab ────────────────────────────────────────────────────────────
+function OverviewTab({ meta, stats, data, nowSec, isChairman, isResident, busy, onObject, onExecute }: any) {
+  const collectedNum = mon(stats.totalCollected);
+  const balanceNum = mon(meta.balance);
+  const paidCount = data.residents.filter((r: ResidentRow) => r.paidThisMonth).length;
   return (
-    <button
-      className={`side-icon ${active ? "side-active" : ""}`}
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-        {children}
-      </svg>
-    </button>
+    <>
+      <div className="tab-head"><h2 className="overview-h">Overview</h2><span className="muted">Live snapshot of the fund</span></div>
+      <div className="stat-grid">
+        <StatCard label="Fund balance" value={fmtMon(meta.balance)} unit="MON" sub="held in the contract" accent />
+        <StatCard label="Total collected" value={fmtMon(stats.totalCollected)} unit="MON" sub={`${stats.levies.length} levies paid`} />
+        <StatCard label="Total spent" value={fmtMon(stats.totalSpent)} unit="MON" sub={`${stats.execCount} executed`} />
+        <StatCard label="Paid this month" value={`${paidCount}/${meta.residentCount}`} sub={`${stats.pending.length} pending proposals`} />
+      </div>
+      <div className="chart-row">
+        <section className="card chart-card">
+          <div className="card-head"><div><h3>Levies collected</h3><span className="muted num">Total {fmtMon(stats.totalCollected)} MON</span></div><span className="legend"><span className="legend-dot" /> Cumulative</span></div>
+          <AreaChart data={stats.chart} />
+        </section>
+        <section className="card gauge-card">
+          <div className="card-head"><h3>In the fund</h3></div>
+          <Gauge value={balanceNum} max={collectedNum || 1} big={fmtMon(meta.balance)} label="MON held" caption={`of ${fmtMon(stats.totalCollected)} collected · ${fmtMon(stats.totalSpent)} spent`} />
+        </section>
+      </div>
+      {stats.pending.length > 0 && (
+        <section className="proposals">
+          <h3 className="section-h">Awaiting decision</h3>
+          <div className="proposal-grid">
+            {stats.pending.map((x: ExpenseView) => (
+              <ProposalCard key={x.expenseId.toString()} exp={x} residentCount={Number(meta.residentCount)} nowSec={nowSec} isChairman={isChairman} isResident={isResident} busy={busy} onObject={onObject} onExecute={onExecute} />
+            ))}
+          </div>
+        </section>
+      )}
+    </>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  unit,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-  sub: string;
-  accent?: boolean;
-}) {
+// ── Levies tab ──────────────────────────────────────────────────────────────
+function LeviesTab({ levies, totalCollected, canPay, onPay }: { levies: LevyEntry[]; totalCollected: bigint; canPay: boolean; onPay: () => void }) {
+  return (
+    <>
+      <div className="tab-head">
+        <div><h2 className="overview-h">Levies</h2><span className="muted">{levies.length} payments · {fmtMon(totalCollected)} MON collected</span></div>
+        {canPay && <button className="btn btn-primary btn-sm" onClick={onPay}>+ Pay levy</button>}
+      </div>
+      <section className="card table-card">
+        {levies.length === 0 ? (
+          <div className="table-empty muted">No levies yet. The ledger starts with the first payment.</div>
+        ) : (
+          <div className="table-wrap">
+            <table className="ledger-table">
+              <thead><tr><th>Unit</th><th>Resident</th><th className="ta-r">Amount</th><th>Period</th><th>When</th><th /></tr></thead>
+              <tbody>
+                {levies.map((e) => {
+                  const hasTx = e.txHash && e.txHash !== "0x";
+                  return (
+                    <tr key={`${e.blockNumber}-${e.logIndex}`}>
+                      <td className="td-type">{e.unitLabel}</td>
+                      <td>{e.name ?? <span className="num muted">{truncAddr(e.resident)}</span>}</td>
+                      <td className="ta-r"><span className="num pos">+{fmtMon(e.amount)}</span></td>
+                      <td className="muted">{e.period}</td>
+                      <td className="muted">{relTime(e.timestamp)}</td>
+                      <td className="ta-r">{hasTx ? <a className="tx" href={explorerTx(e.txHash)} target="_blank" rel="noreferrer">↗</a> : null}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+// ── Expenses tab ────────────────────────────────────────────────────────────
+function ExpensesTab({ data, meta, nowSec, isChairman, isResident, busy, onObject, onExecute, canPropose, onPropose }: any) {
+  const exps = [...data.expenses.values()] as ExpenseView[];
+  const pending = exps.filter((x) => x.status === "PENDING");
+  const settled = exps.filter((x) => x.status !== "PENDING").sort((a, b) => Number(b.expenseId - a.expenseId));
+  return (
+    <>
+      <div className="tab-head">
+        <div><h2 className="overview-h">Expenses</h2><span className="muted">{pending.length} pending · {exps.length} total</span></div>
+        {canPropose && <button className="btn btn-primary btn-sm" onClick={onPropose}>+ Propose expense</button>}
+      </div>
+      {pending.length > 0 && (
+        <section className="proposals">
+          <h3 className="section-h">Awaiting decision</h3>
+          <div className="proposal-grid">
+            {pending.map((x) => (
+              <ProposalCard key={x.expenseId.toString()} exp={x} residentCount={Number(meta.residentCount)} nowSec={nowSec} isChairman={isChairman} isResident={isResident} busy={busy} onObject={onObject} onExecute={onExecute} />
+            ))}
+          </div>
+        </section>
+      )}
+      <h3 className="section-h">History</h3>
+      <section className="card table-card">
+        {settled.length === 0 ? (
+          <div className="table-empty muted">No settled expenses yet.</div>
+        ) : (
+          <div className="table-wrap">
+            <table className="ledger-table">
+              <thead><tr><th>Memo</th><th className="ta-r">Amount</th><th>Recipient</th><th>Status</th><th /></tr></thead>
+              <tbody>
+                {settled.map((x) => (
+                  <tr key={x.expenseId.toString()}>
+                    <td className="td-type">{x.memo}{x.status === "EXECUTED" && <span className="table-stamp"><HanKedereStamp /></span>}</td>
+                    <td className="ta-r"><span className="num neg">−{fmtMon(x.amount)}</span></td>
+                    <td className="num muted">{truncAddr(x.recipient)}</td>
+                    <td><span className={x.status === "EXECUTED" ? "chip chip-executed" : "chip chip-cancelled"}>{x.status.toLowerCase()}</span></td>
+                    <td className="ta-r">{x.txHash ? <a className="tx" href={explorerTx(x.txHash)} target="_blank" rel="noreferrer">↗</a> : null}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+// ── Residents tab (who's paid / who's owing) ────────────────────────────────
+function ResidentsTab({ residents, residentCount }: { residents: ResidentRow[]; residentCount: number }) {
+  const paid = residents.filter((r) => r.paidThisMonth).length;
+  const owing = residents.filter((r) => !r.paidThisMonth);
+  return (
+    <>
+      <div className="tab-head"><div><h2 className="overview-h">Residents</h2><span className="muted">{residentCount} members · {paid} paid this month · {owing.length} owing</span></div></div>
+      <div className="stat-grid stat-grid-3">
+        <StatCard label="Members" value={residentCount.toString()} sub="registered on chain" />
+        <StatCard label="Paid this month" value={paid.toString()} sub="up to date" accent />
+        <StatCard label="Owing" value={owing.length.toString()} sub="no payment this month" />
+      </div>
+      <section className="card table-card">
+        <div className="table-wrap">
+          <table className="ledger-table">
+            <thead><tr><th>Unit</th><th>Name</th><th className="ta-r">Total paid</th><th className="ta-r">Levies</th><th>Last paid</th><th>This month</th><th /></tr></thead>
+            <tbody>
+              {residents.map((r) => (
+                <tr key={r.address}>
+                  <td className="td-type">{r.unitLabel}{r.isChairman && <span className="chip chip-paid role-tag">Chairman</span>}</td>
+                  <td>{r.name ?? <span className="muted">—</span>}</td>
+                  <td className="ta-r num">{fmtMon(r.totalPaid)}</td>
+                  <td className="ta-r num muted">{r.levyCount}</td>
+                  <td className="muted">{r.lastPaidAt ? relTime(r.lastPaidAt) : "never"}</td>
+                  <td>{r.paidThisMonth ? <span className="chip chip-paid">Paid</span> : <span className="chip chip-cancelled">Owing</span>}</td>
+                  <td className="ta-r"><a className="tx" href={explorerAddr(r.address)} target="_blank" rel="noreferrer">↗</a></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
+  );
+}
+
+// ── Profile tab ─────────────────────────────────────────────────────────────
+function ProfileTab({ meta, myRow, address, isChairman, isResident, connected }: any) {
+  const { saveName } = useAuth();
+  const toasts = useToasts();
+  const [name, setName] = useState(() => (address ? getProfile(address)?.name ?? myRow?.name ?? "" : ""));
+  const [saving, setSaving] = useState(false);
+
+  if (!connected) {
+    return (
+      <>
+        <div className="tab-head"><h2 className="overview-h">Profile</h2></div>
+        <div className="card gate-card"><h3 className="rail-title">Connect to view your profile</h3><WalletButton /></div>
+      </>
+    );
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || !address) return;
+    setSaving(true);
+    saveProfile(address, {
+      role: isChairman ? "chairman" : "resident",
+      estateId: meta.id.toString(),
+      name: name.trim(),
+      unit: myRow?.unitLabel,
+    });
+    const ok = await saveName(name.trim());
+    setSaving(false);
+    toasts.push({ kind: ok ? "success" : "error", text: ok ? "Profile saved." : "Saved locally (sign-in declined)." });
+  }
+
+  return (
+    <>
+      <div className="tab-head"><h2 className="overview-h">Your profile</h2><span className="muted">{isChairman ? "Chairman" : isResident ? "Resident" : "Visitor"}{myRow ? ` · ${myRow.unitLabel}` : ""}</span></div>
+      <div className="stat-grid stat-grid-3">
+        <StatCard label="Your contribution" value={fmtMon(myRow?.totalPaid ?? 0n)} unit="MON" sub={`${myRow?.levyCount ?? 0} levies paid`} accent />
+        <StatCard label="Fund balance" value={fmtMon(meta.balance)} unit="MON" sub="held in the contract" />
+        <StatCard label="This month" value={myRow?.paidThisMonth ? "Paid" : "Owing"} sub={myRow?.lastPaidAt ? `last ${relTime(myRow.lastPaidAt)}` : "no payment yet"} />
+      </div>
+      <section className="card profile-card">
+        <h3 className="rail-title">Edit profile</h3>
+        <p className="muted rail-note">Your display name shows on the ledger and resident roster. Saved on chain sign-in so it follows you across devices.</p>
+        <form onSubmit={save}>
+          <div className="field"><label>Display name</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tunde Bello" maxLength={60} required /></div>
+          <div className="field"><label>Unit (from the chain)</label><input value={myRow?.unitLabel ?? "—"} disabled /></div>
+          <div className="field"><label>Wallet</label><input className="num" value={address ?? ""} disabled /></div>
+          <button className="btn btn-primary" disabled={saving} type="submit">{saving ? "Saving…" : "Save profile"}</button>
+        </form>
+      </section>
+    </>
+  );
+}
+
+// ── shared sub-components ────────────────────────────────────────────────────
+function StatCard({ label, value, unit, sub, accent }: { label: string; value: string; unit?: string; sub: string; accent?: boolean }) {
   return (
     <div className="card stat">
       <span className="stat-label">{label}</span>
-      <div className="stat-value">
-        <span className={`num ${accent ? "stat-accent" : ""}`}>{value}</span>
-        {unit && <span className="stat-u">{unit}</span>}
-      </div>
+      <div className="stat-value"><span className={`num ${accent ? "stat-accent" : ""}`}>{value}</span>{unit && <span className="stat-u">{unit}</span>}</div>
       <span className="stat-sub muted">{sub}</span>
     </div>
   );
 }
 
-function ProposalCard({
-  exp,
-  residentCount,
-  nowSec,
-  isChairman,
-  isResident,
-  busy,
-  onObject,
-  onExecute,
-}: {
-  exp: ExpenseView;
-  residentCount: number;
-  nowSec: number;
-  isChairman: boolean;
-  isResident: boolean;
-  busy: string | null;
-  onObject: (id: bigint) => void;
-  onExecute: (id: bigint) => void;
+function ProposalCard({ exp, residentCount, nowSec, isChairman, isResident, busy, onObject, onExecute }: {
+  exp: ExpenseView; residentCount: number; nowSec: number; isChairman: boolean; isResident: boolean; busy: string | null; onObject: (id: bigint) => void; onExecute: (id: bigint) => void;
 }) {
   const cd = countdown(exp.executableAt, nowSec);
   const canExecute = cd === "";
@@ -492,125 +426,26 @@ function ProposalCard({
   const pct = residentCount ? Math.min(100, (exp.objections / residentCount) * 100) : 0;
   return (
     <div className="card proposal">
-      <div className="notice-head">
-        <span className="chip chip-proposed">Proposed</span>
-        <span className="notice-amount num">−{fmtMon(exp.amount)} MON</span>
-      </div>
+      <div className="notice-head"><span className="chip chip-proposed">Proposed</span><span className="notice-amount num">−{fmtMon(exp.amount)} MON</span></div>
       <p className="notice-line"><strong>{exp.memo}</strong></p>
       <p className="notice-sub muted num">to {truncAddr(exp.recipient)}</p>
       <div className="objbar-wrap">
-        <div className="objbar-labels">
-          <span className="muted">{exp.objections} / {residentCount} objected</span>
-          <span className="muted">{majority} to block</span>
-        </div>
+        <div className="objbar-labels"><span className="muted">{exp.objections} / {residentCount} objected</span><span className="muted">{majority} to block</span></div>
         <div className="objbar"><div className="objbar-fill" style={{ width: `${pct}%` }} /></div>
       </div>
       <div className="notice-actions">
-        {cd ? (
-          <span className="countdown num">⏳ {cd}</span>
-        ) : (
-          <span className="countdown countdown-ready">Delay elapsed</span>
-        )}
+        {cd ? <span className="countdown num">⏳ {cd}</span> : <span className="countdown countdown-ready">Delay elapsed</span>}
         <div className="row">
-          {isResident && (
-            <button className="btn btn-rust btn-sm" disabled={busy !== null} onClick={() => onObject(exp.expenseId)}>
-              Object
-            </button>
-          )}
-          {isChairman && (
-            <button className="btn btn-primary btn-sm" disabled={!canExecute || busy !== null} onClick={() => onExecute(exp.expenseId)}>
-              Execute
-            </button>
-          )}
+          {isResident && <button className="btn btn-rust btn-sm" disabled={busy !== null} onClick={() => onObject(exp.expenseId)}>Object</button>}
+          {isChairman && <button className="btn btn-primary btn-sm" disabled={!canExecute || busy !== null} onClick={() => onExecute(exp.expenseId)}>Execute</button>}
         </div>
       </div>
     </div>
   );
 }
 
-function ActivityRow({
-  entry,
-  status,
-}: {
-  entry: LedgerEntry;
-  status?: string;
-}) {
-  let type = "";
-  let detail: React.ReactNode = null;
-  let amount: React.ReactNode = <span className="muted">—</span>;
-  let chip: React.ReactNode = null;
-
-  if (entry.kind === "levy") {
-    type = "Levy";
-    detail = (
-      <>
-        <strong>{entry.name ?? entry.unitLabel}</strong>
-        <span className="muted"> · {entry.period}</span>
-      </>
-    );
-    amount = <span className="num pos">+{fmtMon(entry.amount)}</span>;
-    chip = <span className="chip chip-paid">Paid</span>;
-  } else if (entry.kind === "joined") {
-    type = "Joined";
-    detail = <strong>{entry.name ?? entry.unitLabel}</strong>;
-    chip = <span className="chip chip-joined">Joined</span>;
-  } else if (entry.kind === "objected") {
-    type = "Objection";
-    detail = <span>Expense #{entry.expenseId.toString()} · {entry.totalObjections} so far</span>;
-    chip = <span className="chip chip-cancelled">Objected</span>;
-  } else if (entry.kind === "proposed") {
-    type = "Expense";
-    detail = <strong>{entry.memo}</strong>;
-    amount = <span className="num neg">−{fmtMon(entry.amount)}</span>;
-    chip =
-      status === "EXECUTED" ? (
-        <span className="chip chip-executed">Executed</span>
-      ) : status === "CANCELLED" ? (
-        <span className="chip chip-cancelled">Cancelled</span>
-      ) : (
-        <span className="chip chip-proposed">Proposed</span>
-      );
-  }
-
-  const hasTx = entry.txHash && entry.txHash !== "0x" && entry.txHash.length > 3;
-
+function FullNote({ text, cta, spinner }: { text: string; cta?: React.ReactNode; spinner?: boolean }) {
   return (
-    <tr>
-      <td className="td-type">{type}</td>
-      <td>
-        {detail}
-        {entry.kind === "proposed" && status === "EXECUTED" && (
-          <span className="table-stamp"><HanKedereStamp /></span>
-        )}
-      </td>
-      <td className="ta-r">{amount}</td>
-      <td>{chip}</td>
-      <td className="muted">{relTime(entry.timestamp)}</td>
-      <td className="ta-r">
-        {hasTx ? (
-          <a className="tx" href={explorerTx(entry.txHash)} target="_blank" rel="noreferrer">↗</a>
-        ) : null}
-      </td>
-    </tr>
-  );
-}
-
-function FullNote({
-  text,
-  cta,
-  spinner,
-}: {
-  text: string;
-  cta?: React.ReactNode;
-  spinner?: boolean;
-}) {
-  return (
-    <div className="center-note">
-      <div className="card center-note-card">
-        {spinner && <div className="spinner" />}
-        <p>{text}</p>
-        {cta}
-      </div>
-    </div>
+    <div className="center-note"><div className="card center-note-card">{spinner && <div className="spinner" />}<p>{text}</p>{cta}</div></div>
   );
 }
