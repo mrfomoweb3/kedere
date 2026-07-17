@@ -97,7 +97,10 @@ export function Welcome() {
             <span className="brand-mark"><BrandGlyph /></span>
             <span className="brand-name">KEDERE</span>
           </button>
-          <WalletButton />
+          <div className="row">
+            <button className="topbar-link" onClick={() => navigate("/docs")}>Docs</button>
+            <WalletButton />
+          </div>
         </div>
       </header>
 

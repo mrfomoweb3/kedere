@@ -124,6 +124,10 @@ export function Estate({ id }: { id: bigint }) {
           ))}
         </nav>
         <div className="side-foot">
+          <button className="side-item" onClick={() => navigate("/docs")}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 12h6M9 16h6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <span>Docs</span>
+          </button>
           <a className="side-item" href={explorerAddr(ESTATE_FUND_ADDRESS)} target="_blank" rel="noreferrer">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             <span>Explorer</span>
