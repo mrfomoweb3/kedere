@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { useLenis } from "../lib/smoothScroll";
 
 export function Modal({
   open,
@@ -11,12 +12,19 @@ export function Modal({
   title: string;
   children: ReactNode;
 }) {
+  const lenis = useLenis();
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    // Freeze background smooth-scroll while the dialog is up.
+    lenis?.stop();
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      lenis?.start();
+    };
+  }, [open, onClose, lenis]);
 
   if (!open) return null;
   return (
@@ -26,6 +34,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        data-lenis-prevent
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">

@@ -156,12 +156,12 @@ export function Welcome() {
 function ChooseRole({ onPick }: { onPick: (s: Step) => void }) {
   return (
     <div className="choose">
-      <div className="choose-head">
+      <div className="choose-head" data-reveal>
         <h1 className="apphome-title">Who are you in your estate?</h1>
         <p className="muted">Pick your role to get set up. You can hold both.</p>
       </div>
       <div className="role-cards">
-        <button className="card role-card" onClick={() => onPick("chairman")}>
+        <button className="card role-card" data-reveal onClick={() => onPick("chairman")}>
           <span className="role-badge role-badge-green">
             <ChairIcon />
           </span>
@@ -173,7 +173,7 @@ function ChooseRole({ onPick }: { onPick: (s: Step) => void }) {
           <span className="role-go">Set up my estate →</span>
         </button>
 
-        <button className="card role-card" onClick={() => onPick("resident")}>
+        <button className="card role-card" data-reveal onClick={() => onPick("resident")}>
           <span className="role-badge role-badge-lime">
             <HomeIcon />
           </span>

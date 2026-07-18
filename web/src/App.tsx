@@ -7,6 +7,7 @@ import { Docs } from "./routes/Docs";
 import { usePath } from "./router";
 import { ESTATE_FUND_ADDRESS } from "./contract/config";
 import { MissingConfig } from "./components/MissingConfig";
+import { SmoothScroll } from "./lib/smoothScroll";
 
 export default function App() {
   const path = usePath();
@@ -20,6 +21,14 @@ export default function App() {
     );
   }
 
+  return (
+    <SmoothScroll>
+      <Screen path={path} />
+    </SmoothScroll>
+  );
+}
+
+function Screen({ path }: { path: string }) {
   const match = path.match(/^\/estate\/(\d+)\/?$/);
   if (match) return <Estate id={BigInt(match[1])} />;
   if (/^\/(welcome|app)\/?$/.test(path)) return <Welcome />;

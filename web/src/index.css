@@ -48,6 +48,31 @@ body {
   min-height: 100vh;
 }
 
+/* ── Lenis smooth scroll ─────────────────────────────────────
+   Lenis drives scroll via transform; html.lenis marks it active. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Scroll-reveal pre-state — hidden until the reveal engine animates it in.
+   Only when the user hasn't asked to reduce motion (else shown immediately). */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+}
+
 a {
   color: var(--green);
   text-decoration: none;

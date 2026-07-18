@@ -140,7 +140,7 @@ export function Landing() {
 
       {/* ── proof: where money meets trust ── */}
       <section className="proof container">
-        <div className="proof-left">
+        <div className="proof-left" data-reveal>
           <h2 className="proof-title">
             Where money meets
             <br />
@@ -178,12 +178,14 @@ export function Landing() {
           </div>
           <EstateShowcase onOpen={() => navigate("/estate/0")} />
         </div>
-        <FindCard navigate={navigate} />
+        <div data-reveal>
+          <FindCard navigate={navigate} />
+        </div>
       </section>
 
       {/* ── how it works (lapping cards) ── */}
       <section className="stack-section container" id="how">
-        <div className="sec-head">
+        <div className="sec-head" data-reveal>
           <h2 className="sec-title">How Kedere works</h2>
           <p className="sec-lead">Three moves, all in the open.</p>
         </div>
@@ -209,13 +211,13 @@ export function Landing() {
 
       {/* ── features grid ── */}
       <section className="features container">
-        <div className="sec-head">
+        <div className="sec-head" data-reveal>
           <h2 className="sec-title">What you can rely on</h2>
           <p className="sec-lead">The guarantees are enforced by the contract, not a promise.</p>
         </div>
         <div className="feature-grid">
           {FEATURES.map((f) => (
-            <div className="feature-card" key={f.t}>
+            <div className="feature-card" key={f.t} data-reveal>
               <span className="feature-pin" />
               <h3>{f.t}</h3>
               <p className="muted">{f.d}</p>
@@ -225,7 +227,7 @@ export function Landing() {
       </section>
 
       {/* ── why we built this ── */}
-      <section className="why container">
+      <section className="why container" data-reveal>
         <span className="why-label">Why we built Kedere</span>
         <blockquote className="why-quote">
           “My estate in Abuja collects monthly levies into someone's personal
@@ -237,7 +239,7 @@ export function Landing() {
 
       {/* ── CTA band ── */}
       <section className="cta-band container">
-        <div className="card cta-band-card">
+        <div className="card cta-band-card" data-reveal>
           <div>
             <h2 className="cta-band-title">Put your estate's money in plain sight.</h2>
             <p className="muted">Create a fund in under a minute — or join yours.</p>

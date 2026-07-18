@@ -1,5 +1,6 @@
 import { useNavigate } from "../router";
 import { BrandGlyph } from "../components/BrandGlyph";
+import { useScrollTo } from "../lib/smoothScroll";
 import { ESTATE_FUND_ADDRESS, explorerAddr } from "../contract/config";
 
 const TOC = [
@@ -15,7 +16,11 @@ const TOC = [
 
 export function Docs() {
   const navigate = useNavigate();
-  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollTo = useScrollTo();
+  const go = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) scrollTo(el, -90);
+  };
 
   return (
     <div className="docs">
@@ -33,7 +38,7 @@ export function Docs() {
         </div>
       </header>
 
-      <div className="container docs-hero">
+      <div className="container docs-hero" data-reveal>
         <h1 className="docs-h1">Kedere documentation</h1>
         <p className="docs-lead">
           Kedere (Yoruba: <em>“in plain sight”</em>) is a transparent, onchain levy fund for
@@ -53,7 +58,7 @@ export function Docs() {
 
         <main className="docs-content">
           {/* What */}
-          <section id="what" className="docs-sec">
+          <section id="what" className="docs-sec" data-reveal>
             <h2>What is Kedere</h2>
             <p>
               Nigerian estates collect monthly levies for diesel, security, water and repairs. The
@@ -74,7 +79,7 @@ export function Docs() {
           </section>
 
           {/* How */}
-          <section id="how" className="docs-sec">
+          <section id="how" className="docs-sec" data-reveal>
             <h2>How it works</h2>
             <p>
               The system separates <strong>writes</strong> from <strong>reads</strong>. Every action
@@ -94,7 +99,7 @@ export function Docs() {
           </section>
 
           {/* Lifecycle */}
-          <section id="lifecycle" className="docs-sec">
+          <section id="lifecycle" className="docs-sec" data-reveal>
             <h2>The expense lifecycle</h2>
             <p>Three moves, all in the open:</p>
             <ol className="docs-list">
@@ -106,7 +111,7 @@ export function Docs() {
           </section>
 
           {/* Architecture */}
-          <section id="architecture" className="docs-sec">
+          <section id="architecture" className="docs-sec" data-reveal>
             <h2>Architecture</h2>
             <div className="docs-grid2">
               <div className="docs-arch-card"><h4>Smart contract</h4><p><code>EstateFund.sol</code> (Solidity 0.8.24) holds the money and enforces every rule. One deployment, many estates. Hand-rolled reentrancy guard, no external deps.</p></div>
@@ -117,7 +122,7 @@ export function Docs() {
           </section>
 
           {/* Security */}
-          <section id="security" className="docs-sec">
+          <section id="security" className="docs-sec" data-reveal>
             <h2>Security model</h2>
             <ul className="docs-checks">
               <li><strong>No unattributed outflows.</strong> Funds can only leave via <code>executeExpense</code> after the full delay; <code>receive()</code>/<code>fallback()</code> revert.</li>
@@ -134,7 +139,7 @@ export function Docs() {
           </section>
 
           {/* Dashboard */}
-          <section id="dashboard" className="docs-sec">
+          <section id="dashboard" className="docs-sec" data-reveal>
             <h2>The dashboard</h2>
             <p>Each estate has a dashboard with tabbed sections in a labeled sidebar:</p>
             <ul className="docs-list">
@@ -149,7 +154,7 @@ export function Docs() {
           </section>
 
           {/* Try it */}
-          <section id="try" className="docs-sec">
+          <section id="try" className="docs-sec" data-reveal>
             <h2>Try it in 60 seconds</h2>
             <ol className="docs-list">
               <li>Open the app and <strong>connect a wallet</strong> (it offers to add/switch to Monad Testnet).</li>
@@ -161,7 +166,7 @@ export function Docs() {
           </section>
 
           {/* Reference */}
-          <section id="reference" className="docs-sec">
+          <section id="reference" className="docs-sec" data-reveal>
             <h2>Reference</h2>
             <h4>Contract functions</h4>
             <div className="table-wrap">

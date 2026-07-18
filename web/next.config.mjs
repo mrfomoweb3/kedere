@@ -24,12 +24,19 @@ const nextConfig = {
   },
   // wagmi / walletconnect / metamask-sdk pull in optional deps (React Native,
   // logging) that aren't needed on web — stub them so they don't warn/break.
-  webpack: (config) => {
+  webpack: (config, { webpack }) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     config.resolve.fallback = {
       ...config.resolve.fallback,
       "@react-native-async-storage/async-storage": false,
     };
+    // @wagmi/connectors' Base Account connector pulls in @coinbase/cdp-sdk,
+    // which imports optional @x402/* packages (a2a payments). We only use the
+    // injected() connector, so that code path never runs — ignore the missing
+    // modules so the barrel import doesn't fail the build.
+    config.plugins.push(
+      new webpack.IgnorePlugin({ resourceRegExp: /^@x402\// }),
+    );
     return config;
   },
 };
