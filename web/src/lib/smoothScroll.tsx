@@ -92,36 +92,69 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     if (lenisRef.current) lenisRef.current.scrollTo(0, { immediate: true });
     else window.scrollTo(0, 0);
 
-    let ctx: gsap.Context | undefined;
-    // Let the new route paint before measuring / animating.
-    const raf = requestAnimationFrame(() => {
-      ctx = gsap.context(() => {
-        const els = gsap.utils.toArray<HTMLElement>("[data-reveal]");
-        if (els.length) {
-          gsap.set(els, { opacity: 0, y: 22 }); // matches CSS pre-state (no flash)
-          ScrollTrigger.batch("[data-reveal]", {
-            start: "top 88%",
-            once: true,
-            onEnter: (batch) =>
-              gsap.to(batch, {
-                opacity: 1,
-                y: 0,
-                duration: 0.7,
-                ease: "power2.out",
-                stagger: 0.08,
-                overwrite: true,
-                // drop the inline transform once shown — no lingering layers
-                clearProps: "transform",
-              }),
-          });
-        }
-        ScrollTrigger.refresh();
+    // One context owns every reveal trigger created this route (initial scan +
+    // any that mount later) so a single revert() cleans them all up.
+    const ctx = gsap.context(() => {});
+    const seen = new WeakSet<HTMLElement>();
+
+    // Register one element; returns true if it was newly handled.
+    const reveal = (el: HTMLElement) => {
+      if (seen.has(el)) return false;
+      seen.add(el);
+      ctx.add(() => {
+        gsap.set(el, { opacity: 0, y: 22 }); // matches CSS pre-state (no flash)
+        ScrollTrigger.create({
+          trigger: el,
+          start: "top 88%",
+          once: true,
+          onEnter: () =>
+            gsap.to(el, {
+              opacity: 1,
+              y: 0,
+              duration: 0.7,
+              ease: "power2.out",
+              overwrite: true,
+              clearProps: "transform", // no lingering layers once shown
+            }),
+        });
       });
+      return true;
+    };
+
+    const scan = (root: ParentNode) => {
+      let found = false;
+      root
+        .querySelectorAll<HTMLElement>("[data-reveal]")
+        .forEach((el) => (reveal(el) ? (found = true) : null));
+      if (found) ScrollTrigger.refresh();
+    };
+
+    // Initial pass once the new route has painted.
+    const raf = requestAnimationFrame(() => scan(document.body));
+
+    // Content that mounts asynchronously (e.g. Welcome's role cards after its
+    // backend lookup) would otherwise stay stuck at the hidden pre-state —
+    // catch those additions and reveal them too. Only refresh when we actually
+    // handle something, so busy pages (the live dashboard) aren't churned.
+    const mo = new MutationObserver((muts) => {
+      let found = false;
+      for (const m of muts) {
+        m.addedNodes.forEach((n) => {
+          if (!(n instanceof HTMLElement)) return;
+          if (n.matches("[data-reveal]") && reveal(n)) found = true;
+          n.querySelectorAll<HTMLElement>("[data-reveal]").forEach((el) =>
+            reveal(el) ? (found = true) : null,
+          );
+        });
+      }
+      if (found) ScrollTrigger.refresh();
     });
+    mo.observe(document.body, { childList: true, subtree: true });
 
     return () => {
       cancelAnimationFrame(raf);
-      ctx?.revert();
+      mo.disconnect();
+      ctx.revert();
     };
   }, [path]);
 
