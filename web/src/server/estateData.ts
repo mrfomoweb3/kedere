@@ -35,15 +35,19 @@ export interface ApiEstate {
 }
 
 export async function getEstateData(id: number): Promise<ApiEstate | null> {
-  const estate = await prisma.estate.findUnique({
-    where: { id },
-    include: { events: true, expenses: true, residents: true },
-  });
+  // Fetch the estate + its relations in parallel (one round-trip of latency
+  // instead of Prisma's sequential include queries).
+  const [estate, events, expenseRows, residentRows] = await Promise.all([
+    prisma.estate.findUnique({ where: { id } }),
+    prisma.ledgerEvent.findMany({ where: { estateId: id } }),
+    prisma.expense.findMany({ where: { estateId: id } }),
+    prisma.resident.findMany({ where: { estateId: id } }),
+  ]);
   if (!estate) return null;
 
   // resident display names (off-chain), keyed by address
   const addrs = new Set<string>();
-  for (const e of estate.events) {
+  for (const e of events) {
     const r = (e.data as any)?.resident;
     if (r) addrs.add(String(r).toLowerCase());
   }
@@ -54,7 +58,7 @@ export async function getEstateData(id: number): Promise<ApiEstate | null> {
 
   const feed: any[] = [];
 
-  for (const e of estate.events) {
+  for (const e of events) {
     const d = e.data as any;
     const base = {
       txHash: e.txHash,
@@ -91,7 +95,7 @@ export async function getEstateData(id: number): Promise<ApiEstate | null> {
     }
   }
 
-  const expenses = estate.expenses
+  const expenses = expenseRows
     .sort((a, b) => a.expenseId - b.expenseId)
     .map((x) => {
       const executableAt = x.proposedAt + estate.proposalDelay;
@@ -136,7 +140,7 @@ export async function getEstateData(id: number): Promise<ApiEstate | null> {
   const now = new Date();
   const thisMonth = now.getUTCFullYear() * 12 + now.getUTCMonth();
   const leviesByAddr = new Map<string, { total: bigint; count: number; last: number | null; paidThisMonth: boolean }>();
-  for (const e of estate.events) {
+  for (const e of events) {
     if (e.kind !== "levy") continue;
     const d = e.data as any;
     const addr = String(d.resident).toLowerCase();
@@ -149,7 +153,7 @@ export async function getEstateData(id: number): Promise<ApiEstate | null> {
     leviesByAddr.set(addr, cur);
   }
   const chair = estate.chairman.toLowerCase();
-  const residents = estate.residents
+  const residents = residentRows
     .map((r) => {
       const l = leviesByAddr.get(r.address);
       return {
