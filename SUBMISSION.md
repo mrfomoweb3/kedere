@@ -23,9 +23,9 @@ units. The chairman can't move funds without an onchain proposal carrying a plai
 that sits in a public delay window first — and a resident majority can block it. The ledger
 can't be edited and nothing leaves silently. No trust required — just look.
 
-**Project URL (live app):** _[paste Vercel/CF Pages URL]_
+**Project URL (live app):** https://web-production-33666.up.railway.app
 
-**GitHub repo:** _[paste public repo URL]_
+**GitHub repo:** https://github.com/mrfomoweb3/kedere
 
 **Contract address (deployed + verified ✓):** `0x2923aF91E57F12D3f4076334F19cDcE4697Ef144`
 **Explorer:** https://testnet.monadexplorer.com/address/0x2923aF91E57F12D3f4076334F19cDcE4697Ef144
